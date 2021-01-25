@@ -1,14 +1,14 @@
 clear all; close all; clc
 
-latitude = fitsread("polarisation_data/latitude.fits");
-longitude = fitsread("polarisation_data/longitude.fits");
+latitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/latitude.fits");
+longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits");
 
 
 % plot_map(albedo, '$A$', latitude, longitude, false, 'AlbedoR')
 % plot_map(pmax, '$P_{\textrm{max}}$', latitude, longitude, false, 'PmaxR')
 
-boxplot_albedo()
-boxplot_pmax()
+% boxplot_albedo()
+% boxplot_pmax()
 % contour_plots()
 
 %% Plot maria & highlands
@@ -30,11 +30,12 @@ boxplot_pmax()
 
 
 
+
 %% Functions
  
 function fitslog = load_fits_log(name)
 
-    fits = fitsread( strcat("polarisation_data/", name, ".fits") );
+    fits = fitsread( strcat("/Users/aaron/thesis/Data/polarisation_data/", name, ".fits") );
 
     fits_size = size(fits);
     for i = 1:fits_size(1)
@@ -46,23 +47,6 @@ function fitslog = load_fits_log(name)
     end
     
    fitslog = log10(100*fits);
-
-end
-
-function fits = load_fits(name)
-
-    fits = fitsread( strcat("polarisation_data/", name, ".fits") );
-
-    fits_size = size(fits);
-    for i = 1:fits_size(1)
-        for j = 1:fits_size(2)
-           if fits(i,j) == -99
-               fits(i,j) = 1.0e-101;
-           end
-        end
-    end
-    
-   fits = 100*fits;
 
 end
 
@@ -106,8 +90,8 @@ function plot_map(quantity, label, latitude, longitude, save, savename)
 end
 
 function [maria_mask, highlands_mask] = get_maria_and_highlands_mask()
-    latitude = fitsread("polarisation_data/latitude.fits");
-    longitude = fitsread("polarisation_data/longitude.fits");
+    latitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/latitude.fits");
+    longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits");
     albedo = load_fits_log("Av");
     maria_mask = load("maria_mask.mat").maria_mask & (longitude > 15 | longitude<-15) ;
     highlands_mask = (latitude>-99 & (longitude > 15 | longitude<-15) & albedo>-99) & not(maria_mask); % filter NaN and infs
@@ -290,8 +274,8 @@ end
 
 function boxplot_albedo()
 
-    latitude = fitsread("polarisation_data/latitude.fits");
-    longitude = fitsread("polarisation_data/longitude.fits");
+    latitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/latitude.fits");
+    longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits");
 
     [maria_mask, highlands_mask] = get_maria_and_highlands_mask();
     
@@ -353,8 +337,8 @@ end
 
 function boxplot_pmax()
 
-    latitude = fitsread("polarisation_data/latitude.fits");
-    longitude = fitsread("polarisation_data/longitude.fits");
+    latitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/latitude.fits");
+    longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits");
 
     [maria_mask, highlands_mask] = get_maria_and_highlands_mask();
     
@@ -416,8 +400,8 @@ end
 
 function area = get_area_weights()
 
-    latitude = fitsread("polarisation_data/latitude.fits");
-    longitude = fitsread("polarisation_data/longitude.fits");
+    latitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/latitude.fits");
+    longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits");
 
     size_area = size(latitude);
     area = zeros(size_area);
