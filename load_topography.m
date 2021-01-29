@@ -15,9 +15,9 @@ clear latitude_vec longitude_vec
 
 figure('Position', [500 500 900 900])
 % axesm('mollweid', 'Grid','on','Frame','on', 'PLabelLocation',30, 'GLineWidth', 1)
-axesm('mollweid', 'Grid','on','Frame','on', 'PLabelLocation',30, 'GLineWidth', 1)
+axesm('vperspec', 'Grid','on','Frame','on', 'PLabelLocation',30, 'GLineWidth', 1, 'Origin',[0 0])
 geoshow(latitude, longitude, height, 'DisplayType','texturemap')
-geoshow('/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp', 'DisplayType','polygon','FaceColor','none','EdgeColor','w', 'LineWidth',0.5)
+% geoshow('/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp', 'DisplayType','polygon','FaceColor','none','EdgeColor','k', 'LineWidth',0.5)
 
 colormap(load("topocmap.mat").cmap);
 
@@ -42,4 +42,4 @@ set(gca,'position',x1)
 axis off
 set(gca, 'FontSize', 20)
 
-% exportgraphics(gca,'FiguresWP2/topography.png','Resolution', 300)
+exportgraphics(gca,'FiguresWP2/topography_nearside.pdf','Resolution', 300)

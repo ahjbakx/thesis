@@ -2,7 +2,7 @@ function plot_map(quantity, label, latitude, longitude, save, savename, shape)
     
     
     figure('Position', [500 500 900 900])
-    axesm vperspec
+    axesm('vperspec', 'Grid','on','Frame','on', 'PLabelLocation',30, 'GLineWidth', 1, 'Origin',[0 0])
     geoshow(latitude, longitude, quantity, 'DisplayType','texturemap')
 
     % Gray colormap

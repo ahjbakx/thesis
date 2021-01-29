@@ -6,8 +6,8 @@ longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits"
 albedo = log10(100*load_fits("Av"));
 pmax = log10(100*load_fits("Pv"));
 
-plot_map(albedo, ' $A$', latitude, longitude, true, 'AlbedoV', false)
-plot_map(pmax, ' $P_{\textrm{max}}$', latitude, longitude, true, 'PmaxV', false)
+plot_map(albedo, ' $A$', latitude, longitude, true, 'AlbedoVtest', false)
+plot_map(pmax, ' $P_{\textrm{max}}$', latitude, longitude, true, 'PmaxVtest', false)
 
 % boxplot_albedo()
 % boxplot_pmax()

@@ -4,7 +4,7 @@ close all;
 clc;
 
 %% load data
-load('Results/data_moon_test_1_1200_27-Jan-2021 17:13:11')
+load('Results/data_moon_full_1_420_28-Jan-2021 20:27:48')
 
 
 %%
@@ -12,26 +12,6 @@ lon = data.grd.lon(1,:);
 lats = data.grd.lat(:,1);
 
 load coast;
-
-%%
-
-[longitude, latitude] = meshgrid(lon, lats);
-
-figure('Position', [500 500 900 900])
-axesm mollweid
-geoshow(latitude, longitude, data.pot, 'DisplayType','texturemap')
-%geoshow('/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp', 'DisplayType','polygon','FaceColor','none','EdgeColor','k', 'LineWidth',1.5)
-
-% % Gray colormap
-% colormap gray
-
-% Position colorbar below Moon
-cbar = colorbar('southoutside');
-
-axis off
-set(gca, 'FontSize', 20)
-
-%%
 
 figure;
 subplot(2,2,1)
