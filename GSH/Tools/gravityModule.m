@@ -67,7 +67,7 @@ cost   = cos(pi/2-theta);
 lon = Lon(1,:);
 
 for l = 1:length(lon)
-    
+    current_lon = lon(l)
     % Range related coefficients
     fac1 =  (Re./r).^(V(:,1)+1);
     Sfac1 = (Re./r).^(V(:,1)+2);
