@@ -3,9 +3,11 @@ clear all; close all; clc
 latitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/latitude.fits");
 longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits");
 
+albedo = log10(100*load_fits("Av"));
+pmax = log10(100*load_fits("Pv"));
 
-% plot_map(albedo, '$A$', latitude, longitude, false, 'AlbedoR')
-% plot_map(pmax, '$P_{\textrm{max}}$', latitude, longitude, false, 'PmaxR')
+plot_map(albedo, ' $A$', latitude, longitude, true, 'AlbedoV', false)
+plot_map(pmax, ' $P_{\textrm{max}}$', latitude, longitude, true, 'PmaxV', false)
 
 % boxplot_albedo()
 % boxplot_pmax()
@@ -32,69 +34,14 @@ longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits"
 
 
 %% Functions
- 
-function fitslog = load_fits_log(name)
 
-    fits = fitsread( strcat("/Users/aaron/thesis/Data/polarisation_data/", name, ".fits") );
-
-    fits_size = size(fits);
-    for i = 1:fits_size(1)
-        for j = 1:fits_size(2)
-           if fits(i,j) == -99 || fits(i,j) == 0
-               fits(i,j) = 1.0e-101;
-           end
-        end
-    end
-    
-   fitslog = log10(100*fits);
-
-end
-
-function plot_map(quantity, label, latitude, longitude, save, savename)
-    
-    
-    figure('Position', [500 500 900 900])
-    axesm vperspec
-    geoshow(latitude, longitude, quantity, 'DisplayType','texturemap')
-
-    % Gray colormap
-    colormap gray
-
-    % Position colorbar below Moon
-    cbar = colorbar('southoutside');
-
-    % Colorbar labels: low, mid, high value, with log(%)
-    mid = (cbar.Limits(1) + cbar.Limits(2))/2;
-    set(cbar, 'Ticks', round([cbar.Limits(1), mid, cbar.Limits(2)], 2))
-    caxis(round(cbar.Limits, 2))
-    xlabel(cbar, strcat('log', label,' (\%)'),'Interpreter','latex' )
-
-    % Adjust width of colorbar
-    x1=get(gca,'position');
-    x=get(cbar,'Position');
-    x(1) = x(1) + 0.1250;
-    x(3) = 0.5;
-    set(cbar,'Position',x)
-    set(gca,'position',x1)
-    
-    axis off
-    set(gca, 'FontSize', 20)
-    %geoshow('mare_shape/LROC_GLOBAL_MARE_180.shp', 'DisplayType','polygon','FaceColor','none','EdgeColor','w');
-    
-    if save == true
-        tightmap
-        set(gca,'LooseInset',get(gca,'TightInset'));
-        saveas(gcf, strcat('Figures/', savename, '.eps'))
-    end
-
-end
 
 function [maria_mask, highlands_mask] = get_maria_and_highlands_mask()
     latitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/latitude.fits");
     longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits");
-    albedo = load_fits_log("Av");
-    maria_mask = load("maria_mask.mat").maria_mask & (longitude > 15 | longitude<-15) ;
-    highlands_mask = (latitude>-99 & (longitude > 15 | longitude<-15) & albedo>-99) & not(maria_mask); % filter NaN and infs
+    albedo = load_fits("Av");
+    maria_mask = load("maria_mask.mat").maria_mask;
+    highlands_mask = (latitude>-99 & albedo>-99) & not(maria_mask); % filter NaN and infs
 end
 
 function contour_plots(save, savename)
@@ -280,10 +227,10 @@ function boxplot_albedo()
     [maria_mask, highlands_mask] = get_maria_and_highlands_mask();
     
     % Load pmax data
-    albedo_u = load_fits("Au");
-    albedo_b = load_fits("Ab");
-    albedo_v = load_fits("Av");
-    albedo_r = load_fits("Ar");
+    albedo_u = 100*load_fits("Au");
+    albedo_b = 100*load_fits("Ab");
+    albedo_v = 100*load_fits("Av");
+    albedo_r = 100*load_fits("Ar");
 
     % Mask maria pmax
     albedo_u_maria = albedo_u(maria_mask);
@@ -333,6 +280,9 @@ function boxplot_albedo()
 
     boxes = findobj(gca, 'Tag', 'Box');
     legend(boxes([end 1]), 'maria', 'highlands')
+    
+    exportgraphics(gca,'FiguresWP3/albedo_boxplot.png','Resolution', 300)
+    
 end
 
 function boxplot_pmax()
@@ -343,10 +293,10 @@ function boxplot_pmax()
     [maria_mask, highlands_mask] = get_maria_and_highlands_mask();
     
     % Load pmax data
-    pmax_u = load_fits("Pu");
-    pmax_b = load_fits("Pb");
-    pmax_v = load_fits("Pv");
-    pmax_r = load_fits("Pr");
+    pmax_u = 100*load_fits("Pu");
+    pmax_b = 100*load_fits("Pb");
+    pmax_v = 100*load_fits("Pv");
+    pmax_r = 100*load_fits("Pr");
 
     % Mask maria pmax
     pmax_u_maria = pmax_u(maria_mask);
@@ -396,6 +346,9 @@ function boxplot_pmax()
 
     boxes = findobj(gca, 'Tag', 'Box');
     legend(boxes([end 1]), 'maria', 'highlands')
+    
+    exportgraphics(gca,'FiguresWP3/pmax_boxplot.png','Resolution', 300)
+    
 end
 
 function area = get_area_weights()
@@ -515,4 +468,5 @@ function boxplot_albedo_weighted()
 % 
 %     boxes = findobj(gca, 'Tag', 'Box');
 %     legend(boxes([end 1]), 'maria', 'highlands', 'Location', 'northwest')
+
 end

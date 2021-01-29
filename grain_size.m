@@ -38,6 +38,10 @@ for i = 1:size_pmax(1)
     end
 end
 
+%% Plot 650 nm maps with maria shape
+
+plot_map(albedo_650, ' $A$', latitude, longitude, true, 'Albedo650', true)
+%plot_map(pmax_650, ' $A$', latitude, longitude, true, 'Albedo650', true)
 
 %% Calculate grain size
 
@@ -67,11 +71,13 @@ mid = (cbar.Limits(1) + cbar.Limits(2))/2;
 caxis([1.80 2.16])
 xlabel(cbar, strcat('log d ($\mu$m)'),'Interpreter','latex' )
 
-plotm(0.6875, 23.4333, 'wd', 'MarkerSize', 20, 'LineWidth', 5)
-% geoshow('/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp', 'DisplayType','polygon','FaceColor','none','EdgeColor','w');
+% plotm(0.6875, 23.4333, 'wd', 'MarkerSize', 20, 'LineWidth', 5)
+geoshow('/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp', 'DisplayType','polygon','FaceColor','none','EdgeColor','k', 'LineWidth', 0.5);
 
 axis off
 set(gca, 'FontSize', 20)
+
+% exportgraphics(gca,'FiguresWP3/grain_size.png','Resolution', 300)
 
 %% Compute grain size for different locations
 
@@ -85,4 +91,5 @@ latmask = latitude >= A11_latitude;
 lonmask = longitude >= A11_longitude;
 pos = latmask & lonmask;
 max(max(pos))
+
 
