@@ -11,6 +11,4 @@ function fits = load_fits(name)
         end
     end
     
-   fits = fits;
-
 end
