@@ -4,7 +4,7 @@ close all;
 clc;
 
 %% load data
-load('GSH/Results/data_moon_full_1_420_28-Jan-2021 20:27:48')
+load('GSH/Results/data_moon_test_1_1200_27-Jan-2021 17:13:11')
 
 
 %%
@@ -14,14 +14,14 @@ lats = data.grd.lat(:,1);
 [longitude, latitude] = meshgrid(lon, lats);
 
 figure('Position', [500 500 900 900])
-axesm('vperspec', 'Grid','on','Frame','on', 'PLabelLocation',30, 'GLineWidth', 1, 'Origin',[0 0])
+axesm('mollweid', 'Grid','on','Frame','on', 'PLabelLocation',30, 'GLineWidth', 1, 'Origin',[0 270])
 geoshow(latitude, longitude, ((data.vec.R)).*1e5, 'DisplayType','texturemap')
-geoshow('/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp', 'DisplayType','polygon','FaceColor','none','EdgeColor','k', 'LineWidth',0.5)
+% geoshow('/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp', 'DisplayType','polygon','FaceColor','none','EdgeColor','k', 'LineWidth',0.5)
 
 % % Gray colormap
 % colormap gray
 
-colormap(load("gravicmap.mat").cmap);
+colormap(load("Colormaps/gravity.mat").cmap);
 
 % Position colorbar below Moon
 cbar = colorbar('southoutside');
