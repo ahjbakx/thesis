@@ -10,8 +10,8 @@ addpath([HOME '/Tools']);
 % Model
 % Load previous saved model
 
-%model_name = 'Crust01_crust';
-%load(model_name);
+% model_name = 'moon_topography_layer';
+% load(model_name);
 
 % Construct new model
 inputModel    
@@ -28,17 +28,17 @@ SHbounds =  [1 420]; % Truncation settings: lower limit, upper limit SH-coeffici
 
 %% Global Spherical Harmonic Analysis 
 
-% tic;
-% [V] = model_SH_analysis(Model);
-% toc
+tic;
+[V] = model_SH_analysis(Model);
+toc
 
-file = '/Users/aaron/thesis/Data/moon_gravity/SH_coefficients_GSHformat.mat';
-SHcoefficients = load(file);
-
-[V] = SHcoefficients.coefficients_new;
+% file = '/Users/aaron/thesis/Data/moon_gravity/SH_coefficients_GSHformat.mat';
+% SHcoefficients = load(file);
+% 
+% [V] = SHcoefficients.coefficients_new;
 % clear data
 % 
-% save(['Results/' Model.name '.mat'],'V')
+save(['Results/' Model.name '.mat'],'V')
 
 %% Global Spherical Harmonic Synthesis
 

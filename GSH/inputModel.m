@@ -7,8 +7,8 @@
 HOME = pwd;
 Model = struct();
 
-Model.number_of_layers = 0;
-Model.name = 'moon_full';
+Model.number_of_layers = 1;
+Model.name = 'moon_topography_layer';
 
 file = '/Users/aaron/thesis/Data/moon_gravity/gggrx_1200b_sha.tab.txt';
 data = importdata(file);
@@ -25,19 +25,25 @@ Model.GM = mu;
 Model.Re_analyse = Rm;
 Model.Re = Rm;
 Model.geoid = 'none';
-Model.nmax = degree;     
+Model.nmax = 420;     
 Model.correct_depth = 0;
 
-% % % Topo layer
+% % Topo layer
 % Model.l1.bound = [HOME '/Data/crust1.bd1.gmt'];
 % Model.l1.dens  = [HOME '/Data/crust1.rho1.gmt'];
 % % %Model.l1.alpha = 
-% 
+
+Model.l1.bound = [HOME '/Data/topography_boundaries_layer1.dat'];
+Model.l1.dens = [HOME '/Data/topography_densities_layer1.dat'];
+
 % % Bath layer
 % Model.l2.bound = [HOME '/Data/crust1.bd2.gmt'];
 % Model.l2.dens  = [HOME '/Data/crust1.rho2.gmt'];
 % % %Model.l2.alpha = 
-% % 
+
+Model.l2.bound = [HOME '/Data/topography_boundaries_layer2.dat'];
+Model.l2.dens = [HOME '/Data/topography_densities_layer2.dat'];
+
 % % % Sediment layer
 % Model.l3.bound = [HOME '/Data/crust1.bd3.gmt'];
 % Model.l3.dens  = [HOME '/Data/crust1.rho3.gmt'];
