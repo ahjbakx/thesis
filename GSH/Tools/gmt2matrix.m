@@ -23,11 +23,8 @@ if res==0
     res = abs(c(1,2)-c(2,2));
 end
 
-% lon = min(c(:,1)):res:max(c(:,1));
-% lat = min(c(:,2)):res:max(c(:,2));
-
-lat = linspace(-90, 90, 2880);
-lon = linspace(0, 360, 5760);
+lon = min(c(:,1)):res:max(c(:,1));
+lat = min(c(:,2)):res:max(c(:,2));
 
 A = zeros(length(lat),length(lon));
 Lon = zeros(length(lat),length(lon));

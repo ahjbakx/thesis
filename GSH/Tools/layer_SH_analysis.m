@@ -131,6 +131,7 @@ for Hi = 1:max_bin
 %     end
 
     % K = Hi
+    disp(Hi)
     switch Hi
         case 1
             m = (fdens).*(fupper-flower);

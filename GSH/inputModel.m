@@ -25,7 +25,7 @@ Model.GM = mu;
 Model.Re_analyse = Rm;
 Model.Re = Rm;
 Model.geoid = 'none';
-Model.nmax = 420;     
+Model.nmax = 160;     
 Model.correct_depth = 0;
 
 % % Topo layer

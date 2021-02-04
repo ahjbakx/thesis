@@ -56,10 +56,12 @@ for nlayer = 1:Model.number_of_layers
     Model.Re = Model.Re + meanFix;
     U = U - meanFix;
     L = L - meanFix;
-
+    
+    disp(['Imported layer number' layer_name ', start analysis'])
     % start analysis fixed for depth error
     Vlayer = layer_SH_analysis(Model.nmax,Model.geoid,Model.Re,rhoE,max_bin,U,L,R);
-
+    
+    disp('Coefficients done')
     % transform back to reference sphere
     Vlayer(:,3) = (Model.Re./fixRe).^(Vlayer(:,1)+3) .* Vlayer(:,3);
     Vlayer(:,4) = (Model.Re./fixRe).^(Vlayer(:,1)+3) .* Vlayer(:,4);
