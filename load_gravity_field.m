@@ -1,16 +1,15 @@
 clear all; close all; clc;
 
-file = '/Users/aaron/thesis/Data/moon_gravity/gggrx_1200b_sha.tab.txt';
+file = '/Users/aaron/thesis/Data/moon_gravity/sha.grgm1200b_rm1_1e1_sigma.txt';
 
 data = importdata(file);
 
-Rm = data(1,1);
-mu = data(1,2);
-dmu = data(1,3);
-degree = data(1,4);
-order = data(1,5);
+mu = 4.9028001224452998E+12;
+Rm = 1.7380000000000000E+06;
+degree = 1200;
+order = 1200;
 
-coefficients = data(2:end,1:6);
+coefficients = data(2:end,:);
 
 coefficients_new = zeros(size(coefficients));
 
@@ -23,6 +22,6 @@ for l = 0:1200
     end
 end
 
-%save('Data/moon_gravity/SH_coefficients_GSHformat.mat', 'coefficients_new');
+%save('/Users/aaron/thesis/Data/moon_gravity/SH_coefficients_GSHformat_1200B-RM1.mat', 'coefficients_new');
 
 clear data
