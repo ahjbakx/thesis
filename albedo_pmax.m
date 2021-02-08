@@ -6,30 +6,37 @@ longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits"
 albedo = log10(100*load_fits("Av"));
 pmax = log10(100*load_fits("Pv"));
 
-plot_map(albedo, ' $A$', latitude, longitude, true, 'AlbedoVtest', false)
-plot_map(pmax, ' $P_{\textrm{max}}$', latitude, longitude, true, 'PmaxVtest', false)
+% plot_map(albedo, ' $A$', latitude, longitude, true, 'AlbedoVtest', false)
+% plot_map(pmax, ' $P_{\textrm{max}}$', latitude, longitude, true, 'PmaxVtest', false)
 
 % boxplot_albedo()
 % boxplot_pmax()
 % contour_plots()
 
 %% Plot maria & highlands
-% [maria_mask, highlands_mask] = get_maria_and_highlands_mask();
-% 
-% albedo = load_fits_log("Av");
-% size_albedo = size(albedo);
-% albedo_maria = zeros(size_albedo);
-% albedo_highlands = zeros(size_albedo);
-% for i = 1:size_albedo(1)
-%     for j = 1:size_albedo(2)
-%         albedo_maria(i,j) = albedo(i,j)*maria_mask(i,j);
-%         albedo_highlands(i,j) = albedo(i,j)*highlands_mask(i,j);
-%     end
-% end
-% 
-% plot_map(albedo_maria, '$A$', latitude, longitude, false, '')
-% plot_map(albedo_highlands, '$A$', latitude, longitude, false, '')
+[maria_mask, highlands_mask] = get_maria_and_highlands_mask();
 
+albedo = load_fits("Av");
+size_albedo = size(albedo);
+maria = zeros(size_albedo);
+for i = 1:size_albedo(1)
+    for j = 1:size_albedo(2)
+        if maria_mask(i,j) == 1
+            maria(i,j) = 1;
+        else
+            maria(i,j)=0;
+        end
+    end
+end
+
+figure('Position', [500 500 900 900])
+axesm('vperspec', 'PLabelLocation',30, 'GLineWidth', 1, 'Origin',[0 0])
+geoshow(latitude, longitude, maria, 'DisplayType','texturemap')
+
+colormap jet
+caxis([-0.5 1.5])
+
+axis off
 
 
 
