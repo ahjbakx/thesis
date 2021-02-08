@@ -20,6 +20,7 @@ Input:
 import pyshtools as pysh
 from pyshtools import constants
 from cartopy import crs as ccrs
+from palettable import scientific as scm
 
 # Width of image with respect to (journal) page
 pysh.utils.figstyle(rel_width=0.75)
@@ -67,7 +68,7 @@ print('Expand & plot gravity field')
 grav = clm.expand(lmax=lmax, a=clm.r0, f=0.)
 
 fig, ax = grav.plot_total(projection=projection,
-                        cmap = 'RdBu_r',
+                        cmap = scm.diverging.Vik_20.mpl_colormap,
                         cmap_limits = [-400, 400],
                         colorbar='bottom',
                         cb_triangles='both',
@@ -86,7 +87,7 @@ shape_grid = shape.expand(grid='DH2')
 topo_grid = (shape_grid - clm.r0) / 1.e3
 
 fig, ax = topo_grid.plot(projection= projection,
-                        cmap = 'RdBu_r',
+                        cmap=scm.sequential.Davos_20.mpl_colormap,
                         cmap_limits = [-7, 7],
                         colorbar='bottom',
                         cb_label='Topography, km',
@@ -120,7 +121,7 @@ ba = clm - bc
 ba_grid = ba.expand(lmax=lmax, a=clm.r0, f=0.)
 
 fig, ax = ba_grid.plot_total(projection=projection,
-                        cmap = 'RdBu_r',
+                        cmap=scm.diverging.Vik_20.mpl_colormap,
                         cmap_limits = [-650, 650],
                         colorbar='bottom',
                         cb_triangles='both',
@@ -155,7 +156,7 @@ ba_filtered.set_coeffs(values=[0., 0., 0.,
 ba_filtered_grid = ba_filtered.expand(lmax=lmax, a=clm.r0, f=0.)
 
 fig, ax = ba_filtered_grid.plot_total(projection=projection,
-                        cmap = 'RdBu_r',
+                        cmap=scm.diverging.Vik_20.mpl_colormap,
                         cmap_limits = [-300, 300],
                         colorbar='bottom',
                         cb_triangles='both',
