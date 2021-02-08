@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Created on Thu Feb  4 09:41:53 2021
 
@@ -7,36 +5,40 @@ Created on Thu Feb  4 09:41:53 2021
 
 Calculate & plot:
     * power spectrum
-    * geoid
+    * selenoid
     * gravity field
     * topography
     * Bouguer correction
     * Bouguer anomaly
+    
+Input:
+    * maximum degree
+    * type of projection (global/nearside)
+    * option to auto-save figures
 """
 
-import matplotlib.pyplot as plt
 import pyshtools as pysh
 from pyshtools import constants
 from cartopy import crs as ccrs
 
 # Width of image with respect to (journal) page
-pysh.utils.figstyle(rel_width=0.5)
+pysh.utils.figstyle(rel_width=0.75)
+
+# Maximum degree
+lmax=1200
+
+# Type of projection 
+projection = ccrs.Mollweide(central_longitude=270.) # Global
+# projection = ccrs.Orthographic(central_longitude=0) # Nearside
 
 save_figures = False
 #%% Import SH gravity coefficients
 print('Load GRGM1200B RM1 1.0 gravity coefficients')
 
-clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0()
-# clm = pysh.datasets.Mars.GMM3()
+clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
 
 # print('------ clm info ------')
 # clm.info()
-
-lmax=1200
-normal_gravity = ( ( clm.gm / (clm.r0**2) ) * 1.e5)
-# f=0.0012
-# a=clm.r0
-u0=clm.gm/clm.r0
 
 # set angular rotation rate (for centripetal force)
 clm.set_omega(constants.Moon.omega.value) 
@@ -47,31 +49,24 @@ clm.set_omega(constants.Moon.omega.value)
 # 2D power spectrum
 # fig, ax = clm.plot_spectrum2d(function='total', cmap_rlimits=(1.e-10, 0.01), errors = True, show=False)
  
-#%% Geoid
-# print('Calculate geoid')
+#%% Selenoid
+# print('Calculate selenoid')
 
-# moon_geoid = clm.geoid(u0, lmax=lmax)
+# selenoid = clm.geoid(u0, lmax=lmax)
 
-# fig, ax = moon_geoid.plot(projection= ccrs.Mollweide(central_longitude=270.),
+# fig, ax = selenoid.plot(projection=projection,
 #                         cmap = 'RdBu_r',
 #                         colorbar='bottom',
 #                         grid = True,
 #                         show = False)
 
-# moon_geoid_ellipsoid = clm.geoid(u0, a=a, f=f, lmax=lmax)
-
-# fig, ax = moon_geoid_ellipsoid.plot(projection= ccrs.Mollweide(central_longitude=270.),
-#                         cmap = 'RdBu_r',
-#                         colorbar='bottom',
-#                         grid = True,
-#                         show = False)
 
 #%% Gravity field
 print('Expand & plot gravity field')
 
 grav = clm.expand(lmax=lmax, a=clm.r0, f=0.)
 
-fig, ax = grav.plot_total(projection= ccrs.Mollweide(central_longitude=270.),
+fig, ax = grav.plot_total(projection=projection,
                         cmap = 'RdBu_r',
                         cmap_limits = [-400, 400],
                         colorbar='bottom',
@@ -79,9 +74,10 @@ fig, ax = grav.plot_total(projection= ccrs.Mollweide(central_longitude=270.),
                         grid = True,
                         show = False)
 if save_figures:
-    fig.savefig('/Users/aaron/thesis/FiguresWP2/global_free-air-anomaly.pdf', 
+    fig.savefig('/Users/aaron/thesis/Figures/WP2/free-air-anomaly.pdf', 
                 format='pdf', 
                 dpi=150)
+    
 #%% Topography
 print('Expand & plot topography')
 
@@ -89,7 +85,7 @@ shape = pysh.datasets.Moon.MoonTopo2600p(lmax=lmax)
 shape_grid = shape.expand(grid='DH2')
 topo_grid = (shape_grid - clm.r0) / 1.e3
 
-fig, ax = topo_grid.plot(projection= ccrs.Mollweide(central_longitude=270.),
+fig, ax = topo_grid.plot(projection= projection,
                         cmap = 'RdBu_r',
                         cmap_limits = [-7, 7],
                         colorbar='bottom',
@@ -99,7 +95,7 @@ fig, ax = topo_grid.plot(projection= ccrs.Mollweide(central_longitude=270.),
                         show = False)
 
 if save_figures:
-    fig.savefig('/Users/aaron/thesis/FiguresWP2/global_topography.pdf', 
+    fig.savefig('/Users/aaron/thesis/Figures/WP2/topography.pdf', 
                 format='pdf', 
                 dpi=300)
 
@@ -123,7 +119,7 @@ ba = clm - bc
 
 ba_grid = ba.expand(lmax=lmax, a=clm.r0, f=0.)
 
-fig, ax = ba_grid.plot_total(projection= ccrs.Mollweide(central_longitude=270.),
+fig, ax = ba_grid.plot_total(projection=projection,
                         cmap = 'RdBu_r',
                         cmap_limits = [-650, 650],
                         colorbar='bottom',
@@ -132,7 +128,7 @@ fig, ax = ba_grid.plot_total(projection= ccrs.Mollweide(central_longitude=270.),
                         show = False)
 
 if save_figures:
-    fig.savefig('/Users/aaron/thesis/FiguresWP2/global_bouguer-anomaly.pdf', 
+    fig.savefig('/Users/aaron/thesis/Figures/WP2/bouguer-anomaly.pdf', 
                 format='pdf', 
                 dpi=250)
 
@@ -158,7 +154,7 @@ ba_filtered.set_coeffs(values=[0., 0., 0.,
 
 ba_filtered_grid = ba_filtered.expand(lmax=lmax, a=clm.r0, f=0.)
 
-fig, ax = ba_filtered_grid.plot_total(projection= ccrs.Mollweide(central_longitude=270.),
+fig, ax = ba_filtered_grid.plot_total(projection=projection,
                         cmap = 'RdBu_r',
                         cmap_limits = [-300, 300],
                         colorbar='bottom',
@@ -166,7 +162,7 @@ fig, ax = ba_filtered_grid.plot_total(projection= ccrs.Mollweide(central_longitu
                         grid = True,
                         show = False)
 if save_figures:
-    fig.savefig('/Users/aaron/thesis/FiguresWP2/global_bouguer-anomaly_7-1200.pdf', 
+    fig.savefig('/Users/aaron/thesis/Figures/WP2/bouguer-anomaly_7-1200.pdf', 
                 format='pdf', 
                 dpi=250)
 
