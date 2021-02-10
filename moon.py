@@ -30,8 +30,8 @@ pysh.utils.figstyle(rel_width=0.75)
 lmax=1200
 
 # Type of projection 
-# projection = ccrs.Mollweide(central_longitude=270.) # Global
-projection = ccrs.Orthographic(central_longitude=0) # Nearside
+projection = ccrs.Mollweide(central_longitude=270.) # Global
+# projection = ccrs.Orthographic(central_longitude=0) # Nearside
 
 save_figures = False
 #%% Import SH gravity coefficients
@@ -57,14 +57,23 @@ clm.set_omega(constants.Moon.omega.value)
 #%% Selenoid
 # print('Calculate selenoid')
 
-# selenoid = clm.geoid(u0, lmax=lmax)
+geoid = clm.geoid(clm.gm/clm.r0, lmax=lmax)
 
-# fig, ax = selenoid.plot(projection=projection,
-#                         cmap = 'RdBu_r',
-#                         colorbar='bottom',
-#                         grid = True,
-#                         show = False)
+fig, ax = geoid.plot(projection=projection,
+                        cmap =scm.sequential.Davos_20.mpl_colormap,
+                        cmap_limits = [-550, 550],
+                        colorbar='bottom',
+                        cb_triangles='both',
+                        cb_label='Geoid, m',
+                        cb_tick_interval=100,
+                        cb_minor_tick_interval=50,
+                        grid = True,
+                        show = False)
 
+if save_figures:
+    fig.savefig('/Users/aaron/thesis/Figures/WP2/selenoid.pdf', 
+                format='pdf', 
+                dpi=150)
 
 #%% Gravity field
 
@@ -86,11 +95,13 @@ if save_figures:
 
 shape = pysh.datasets.Moon.MoonTopo2600p(lmax=lmax)
 shape_grid = shape.expand(grid='DH2')
-topo_grid = (shape_grid - clm.r0) / 1.e3
+topo_grid = (shape_grid - clm.r0 - geoid.geoid) / 1.e3
 
 fig, ax = topo_grid.plot(projection= projection,
                         cmap=scm.sequential.Davos_20.mpl_colormap,
-                        cmap_limits = [-6.5, 6.5],
+                        cmap_limits = [-6, 7],
+                        cb_tick_interval=1,
+                        cb_minor_tick_interval=0.5,
                         colorbar='bottom',
                         cb_label='Topography, km',
                         cb_triangles='both',
