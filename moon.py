@@ -18,6 +18,7 @@ Input:
 """
 
 import pyshtools as pysh
+import numpy as np
 from pyshtools import constants
 from cartopy import crs as ccrs
 from palettable import scientific as scm
@@ -29,14 +30,17 @@ pysh.utils.figstyle(rel_width=0.75)
 lmax=1200
 
 # Type of projection 
-projection = ccrs.Mollweide(central_longitude=270.) # Global
-# projection = ccrs.Orthographic(central_longitude=0) # Nearside
+# projection = ccrs.Mollweide(central_longitude=270.) # Global
+projection = ccrs.Orthographic(central_longitude=0) # Nearside
 
 save_figures = False
 #%% Import SH gravity coefficients
-print('Load GRGM1200B RM1 1.0 gravity coefficients')
 
-clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
+# clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
+clm = pysh.SHGravCoeffs.from_file('/Users/aaron/thesis/Data/moon_gravity/sha.grgm1200b_rm1_1e1_sigma.txt',
+                                  r0_index=1,
+                                  gm_index=0,
+                                  errors=True)
 
 # print('------ clm info ------')
 # clm.info()
@@ -63,7 +67,6 @@ clm.set_omega(constants.Moon.omega.value)
 
 
 #%% Gravity field
-print('Expand & plot gravity field')
 
 grav = clm.expand(lmax=lmax, a=clm.r0, f=0.)
 
@@ -80,7 +83,6 @@ if save_figures:
                 dpi=150)
     
 #%% Topography
-print('Expand & plot topography')
 
 shape = pysh.datasets.Moon.MoonTopo2600p(lmax=lmax)
 shape_grid = shape.expand(grid='DH2')
@@ -88,7 +90,7 @@ topo_grid = (shape_grid - clm.r0) / 1.e3
 
 fig, ax = topo_grid.plot(projection= projection,
                         cmap=scm.sequential.Davos_20.mpl_colormap,
-                        cmap_limits = [-7, 7],
+                        cmap_limits = [-6.5, 6.5],
                         colorbar='bottom',
                         cb_label='Topography, km',
                         cb_triangles='both',
@@ -98,15 +100,11 @@ fig, ax = topo_grid.plot(projection= projection,
 if save_figures:
     fig.savefig('/Users/aaron/thesis/Figures/WP2/topography.pdf', 
                 format='pdf', 
-                dpi=300)
+                dpi=150)
 
 #%% Bouguer correction
-print('Calculate Bouguer correction')
 
-bc = pysh.SHGravCoeffs.from_shape(shape,
-                                  rho=2500.,
-                                  gm=clm.gm,
-                                  lmax=lmax)
+bc = pysh.SHGravCoeffs.from_shape(shape, rho=2500., gm=clm.gm, lmax=lmax)
 bc = bc.change_ref(r0=clm.r0)
 
 
@@ -114,7 +112,6 @@ bc = bc.change_ref(r0=clm.r0)
 # bc.info()
 
 #%% Bouguer anomaly
-print('Calculate, expand & plot Bouguer anomaly')
 
 ba = clm - bc
 
@@ -131,31 +128,27 @@ fig, ax = ba_grid.plot_total(projection=projection,
 if save_figures:
     fig.savefig('/Users/aaron/thesis/Figures/WP2/bouguer-anomaly.pdf', 
                 format='pdf', 
-                dpi=250)
+                dpi=150)
 
-ba_filtered = ba.copy()
-ba_filtered.set_coeffs(values=[0., 0., 0., 
-                                0., 0., 0., 0., 0., 
-                                0., 0., 0., 0., 0., 0., 0.,
-                                0., 0., 0., 0., 0., 0., 0., 0., 0.,
-                                0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
-                                0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
-                        ls=[1, 1, 1, 
-                            2, 2, 2, 2, 2, 
-                            3, 3, 3, 3, 3, 3, 3,
-                            4, 4, 4, 4, 4, 4, 4, 4, 4,
-                            5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-                            6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
-                        ms=[-1, 0, 1, 
-                            -2, -1, 0, 1, 2, 
-                            -3, -2, -1, 0, 1, 2, 3,
-                            -4, -3, -2, -1, 0, 1, 2, 3, 4,
-                            -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5,
-                            -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6])
 
-ba_filtered_grid = ba_filtered.expand(lmax=lmax, a=clm.r0, f=0.)
+#%% Isostatic anomaly
+ia = ba.copy()
 
-fig, ax = ba_filtered_grid.plot_total(projection=projection,
+co_deg = 20
+
+values = np.zeros(shape=(1, co_deg * (co_deg + 1) + co_deg ), dtype=float)
+ls = np.zeros(shape=(1, co_deg * (co_deg + 1) + co_deg ), dtype=int)
+ms = np.zeros(shape=(1, co_deg * (co_deg + 1) + co_deg ), dtype=int)
+for deg in range(co_deg + 1):
+    ls[ :, (deg - 1) * deg + deg - 1 : deg * (deg + 1) + deg ] = deg * np.ones( 2 * deg + 1, dtype=int)
+    ms[ :, (deg - 1) * deg + deg - 1 : deg * (deg + 1) + deg ] = np.arange(-deg, deg + 1, 1, dtype=int)
+
+
+ia.set_coeffs(values=values, ls=ls, ms=ms)
+
+ia_grid = ia.expand(lmax=lmax, a=clm.r0, f=0.)
+
+fig, ax = ia_grid.plot_total(projection=projection,
                         cmap=scm.diverging.Vik_20.mpl_colormap,
                         cmap_limits = [-300, 300],
                         colorbar='bottom',
@@ -165,5 +158,5 @@ fig, ax = ba_filtered_grid.plot_total(projection=projection,
 if save_figures:
     fig.savefig('/Users/aaron/thesis/Figures/WP2/bouguer-anomaly_7-1200.pdf', 
                 format='pdf', 
-                dpi=250)
+                dpi=150)
 

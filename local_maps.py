@@ -18,7 +18,12 @@ pysh.utils.figstyle(rel_width=0.5)
 #%% Import data
 lmax=1200
 
-clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
+# clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
+clm = pysh.SHGravCoeffs.from_file('/Users/aaron/thesis/Data/moon_gravity/sha.grgm1200b_rm1_1e1_sigma.txt',
+                                  r0_index=1,
+                                  gm_index=0,
+                                  errors=True)
+
 clm.set_omega(constants.Moon.omega.value) 
 
 #%% Plot region of interest
