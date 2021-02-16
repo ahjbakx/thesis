@@ -1,7 +1,7 @@
 clear all; close all; clc
 
-latitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/latitude.fits");
-longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits");
+latitude = fitsread("/Users/aaron/thesis/Data/polarisation/latitude.fits");
+longitude = fitsread("/Users/aaron/thesis/Data/polarisation/longitude.fits");
 
 albedo = log10(100*load_fits("Av"));
 pmax = log10(100*load_fits("Pv"));
@@ -13,43 +13,37 @@ pmax = log10(100*load_fits("Pv"));
 % boxplot_pmax()
 % contour_plots()
 
+scatter_plots()
+
 %% Plot maria & highlands
-[maria_mask, highlands_mask] = get_maria_and_highlands_mask();
-
-albedo = load_fits("Av");
-size_albedo = size(albedo);
-maria = zeros(size_albedo);
-for i = 1:size_albedo(1)
-    for j = 1:size_albedo(2)
-        if maria_mask(i,j) == 1
-            maria(i,j) = 1;
-        else
-            maria(i,j)=0;
-        end
-    end
-end
-
-figure('Position', [500 500 900 900])
-axesm('vperspec', 'PLabelLocation',30, 'GLineWidth', 1, 'Origin',[0 0])
-geoshow(latitude, longitude, maria, 'DisplayType','texturemap')
-
-colormap jet
-caxis([-0.5 1.5])
-
-axis off
+% [maria_mask, highlands_mask] = get_maria_and_highlands_mask();
+% 
+% albedo = load_fits("Av");
+% size_albedo = size(albedo);
+% maria = zeros(size_albedo);
+% for i = 1:size_albedo(1)
+%     for j = 1:size_albedo(2)
+%         if maria_mask(i,j) == 1
+%             maria(i,j) = 1;
+%         else
+%             maria(i,j)=0;
+%         end
+%     end
+% end
+% 
+% figure('Position', [500 500 900 900])
+% axesm('vperspec', 'PLabelLocation',30, 'GLineWidth', 1, 'Origin',[0 0])
+% geoshow(latitude, longitude, maria, 'DisplayType','texturemap')
+% 
+% colormap jet
+% caxis([-0.5 1.5])
+% 
+% axis off
 
 
 
 %% Functions
 
-
-function [maria_mask, highlands_mask] = get_maria_and_highlands_mask()
-    latitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/latitude.fits");
-    longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits");
-    albedo = load_fits("Av");
-    maria_mask = load("maria_mask.mat").maria_mask;
-    highlands_mask = (latitude>-99 & albedo>-99) & not(maria_mask); % filter NaN and infs
-end
 
 function contour_plots(save, savename)
     % Get masks for maria and highlands
@@ -228,8 +222,8 @@ end
 
 function boxplot_albedo()
 
-    latitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/latitude.fits");
-    longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits");
+    latitude = fitsread("/Users/aaron/thesis/Data/polarisation/latitude.fits");
+    longitude = fitsread("/Users/aaron/thesis/Data/polarisation/longitude.fits");
 
     [maria_mask, highlands_mask] = get_maria_and_highlands_mask();
     
@@ -272,12 +266,12 @@ function boxplot_albedo()
                    repmat([558.6], size_albedo_highlands(1), 1);
                    repmat([676.6], size_albedo_highlands(1), 1)];
 
-    figure('Position', [500 500 900 900], 'Renderer', 'painters')
-    boxplot(albedo_maria, wavelengths_maria, 'Notch','on', 'Symbol','', 'Colors', 'b'); hold on
-    plot([1 2 3 4], mean_albedo_maria, '-ob')
+    figure('Position', [500 500 500 500], 'Renderer', 'painters')
+    boxplot(albedo_maria, wavelengths_maria, 'Notch','on', 'Symbol','', 'Colors', [0.8500, 0.3250, 0.0980]); hold on
+    plot([1 2 3 4], mean_albedo_maria, '-o', 'Color', [0.8500, 0.3250, 0.0980])
 
-    boxplot(albedo_highlands, wavelengths_highlands, 'Notch','on', 'Symbol','', 'Colors', 'r'); 
-    plot([1 2 3 4], mean_albedo_highlands, '-or')
+    boxplot(albedo_highlands, wavelengths_highlands, 'Notch','on', 'Symbol','', 'Colors', [0, 0.4470, 0.7410]); 
+    plot([1 2 3 4], mean_albedo_highlands, '-o', 'Color', [0, 0.4470, 0.7410])
 
     xlabel('Wavelength (nm)'); ylabel('$A$ (\%)', 'Interpreter', 'latex')
     grid on
@@ -288,14 +282,14 @@ function boxplot_albedo()
     boxes = findobj(gca, 'Tag', 'Box');
     legend(boxes([end 1]), 'maria', 'highlands')
     
-    exportgraphics(gca,'FiguresWP3/albedo_boxplot.png','Resolution', 300)
-    
+%     exportgraphics(gca,'Figures/WP3/albedo_boxplot.png','Resolution', 300)
+
 end
 
 function boxplot_pmax()
 
-    latitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/latitude.fits");
-    longitude = fitsread("/Users/aaron/thesis/Data/polarisation_data/longitude.fits");
+    latitude = fitsread("/Users/aaron/thesis/Data/polarisation/latitude.fits");
+    longitude = fitsread("/Users/aaron/thesis/Data/polarisation/longitude.fits");
 
     [maria_mask, highlands_mask] = get_maria_and_highlands_mask();
     
@@ -338,12 +332,12 @@ function boxplot_pmax()
                    repmat([558.6], size_pmax_highlands(1), 1);
                    repmat([676.6], size_pmax_highlands(1), 1)];
 
-    figure('Position', [500 500 900 900], 'Renderer', 'painters')
-    boxplot(pmax_maria, wavelengths_maria, 'Notch','on', 'Symbol','', 'Colors', 'b'); hold on
-    plot([1 2 3 4], mean_pmax_maria, '-ob')
+    figure('Position', [500 500 500 500], 'Renderer', 'painters')
+    boxplot(pmax_maria, wavelengths_maria, 'Notch','on', 'Symbol','', 'Colors', [0.8500, 0.3250, 0.0980]); hold on
+    plot([1 2 3 4], mean_pmax_maria, '-o', 'Color', [0.8500, 0.3250, 0.0980])
 
-    boxplot(pmax_highlands, wavelengths_highlands, 'Notch','on', 'Symbol','', 'Colors', 'r'); 
-    plot([1 2 3 4], mean_pmax_highlands, '-or')
+    boxplot(pmax_highlands, wavelengths_highlands, 'Notch','on', 'Symbol','', 'Colors', [0, 0.4470, 0.7410]); 
+    plot([1 2 3 4], mean_pmax_highlands, '-o', 'Color', [0, 0.4470, 0.7410])
 
     xlabel('Wavelength (nm)'); ylabel('$P_{max}$ (\%)', 'Interpreter', 'latex')
     grid on
@@ -352,9 +346,9 @@ function boxplot_pmax()
     ylim([0 35])
 
     boxes = findobj(gca, 'Tag', 'Box');
-    legend(boxes([end 1]), 'maria', 'highlands')
+    %legend(boxes([end 1]), 'maria', 'highlands')
     
-    exportgraphics(gca,'FiguresWP3/pmax_boxplot.png','Resolution', 300)
+%     exportgraphics(gca,'Figures/WP3/pmax_boxplot.png','Resolution', 300)
     
 end
 
@@ -388,7 +382,6 @@ function area = get_area_weights()
     % title('Area')
     % colorbar
 end
-
 
 function boxplot_albedo_weighted()
 
