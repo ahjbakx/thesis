@@ -1,6 +1,6 @@
 function fits = load_fits(name)
 
-    fits = fitsread( strcat("/Users/aaron/thesis/Data/polarisation_data/", name, ".fits") );
+    fits = fitsread( strcat("/Users/aaron/thesis/Data/polarisation/", name, ".fits") );
 
     fits_size = size(fits);
     for i = 1:fits_size(1)
