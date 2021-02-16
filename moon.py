@@ -19,12 +19,13 @@ Input:
 
 import pyshtools as pysh
 import numpy as np
+from matplotlib import pyplot as plt
 from pyshtools import constants
 from cartopy import crs as ccrs
 from palettable import scientific as scm
 
 # Width of image with respect to (journal) page
-pysh.utils.figstyle(rel_width=0.75)
+pysh.utils.figstyle(rel_width=0.5)
 
 # Maximum degree
 lmax=1200
@@ -33,7 +34,7 @@ lmax=1200
 projection = ccrs.Mollweide(central_longitude=270.) # Global
 # projection = ccrs.Orthographic(central_longitude=0) # Nearside
 
-save_figures = False
+save_figures = True
 #%% Import SH gravity coefficients
 
 # clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
@@ -49,11 +50,44 @@ clm = pysh.SHGravCoeffs.from_file('/Users/aaron/thesis/Data/moon_gravity/sha.grg
 clm.set_omega(constants.Moon.omega.value) 
 
 #%% Power spectrum
-# fig, ax = clm.plot_spectrum(function='geoid', show=False)
+
+# # fig, ax = clm.plot_spectrum(function='total', show=False)
+# spectrum = clm.spectrum(function='total', lmax=lmax)
+# degrees = np.arange(0, lmax+1)
+# power_spectrum = spectrum[0]
+# error_spectrum = spectrum[1]
+
+# power_spectrum[0:2] = np.nan
+# error_spectrum[:520] = np.nan
+
+# fig = plt.figure(figsize=(3,3))
+# plt.plot(degrees, power_spectrum, label='power per degree')
+# plt.plot(degrees, error_spectrum, label='error')
+# plt.xlabel('Spherical harmonic degree')
+# plt.ylabel('Power, mGal')
+# plt.grid()
+# plt.yscale('log')
+# plt.xlim(0, 1200)
+# plt.ylim(1.e-12, 1.e-6)
+# plt.legend()
+
+# if save_figures:
+#     fig.savefig('/Users/aaron/thesis/Figures/WP2/power_spectrum.pdf', 
+#                 format='pdf', 
+#                 dpi=150)
 
 # 2D power spectrum
-# fig, ax = clm.plot_spectrum2d(function='total', cmap_rlimits=(1.e-10, 0.01), errors = True, show=False)
- 
+fig, ax = clm.plot_spectrum2d(function='total', lmax=lmax,
+                              errors = True, show=False,
+                              cmap = scm.sequential.Nuuk_20.mpl_colormap,
+                              cmap_rlimits=[1.e-1, 1.e-12],
+                              cb_triangles='both')
+
+if save_figures:
+    fig.savefig('/Users/aaron/thesis/Figures/WP2/power_spectrum2d.png', 
+                    format='png', 
+                    dpi=300)
+     
 #%% Selenoid
 # print('Calculate selenoid')
 
