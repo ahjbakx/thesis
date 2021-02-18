@@ -13,7 +13,6 @@ pmax = log10(100*load_fits("Pv"));
 % boxplot_pmax()
 % contour_plots()
 
-scatter_plots()
 
 %% Plot maria & highlands
 % [maria_mask, highlands_mask] = get_maria_and_highlands_mask();
@@ -41,9 +40,34 @@ scatter_plots()
 % axis off
 
 
+%% Histograms
+close all;
 
+albedo = 100*load_fits("Av");
+pmax = 100*load_fits("Pv");
+
+mask = (latitude>-99 & albedo>-99);
+
+albedo = albedo(mask);
+pmax = pmax(mask);
+
+
+figure('Position', [500 500 500 500], 'Renderer', 'painters')
+histogram(albedo, 100, 'FaceColor', 'k'); hold on;
+xlabel('$A$ (\%)', 'Interpreter', 'latex')
+set(gca, 'YTick', [])
+xlim([5 30])
+set(gca, 'FontSize', 20)
+    
+
+figure('Position', [500 500 500 500], 'Renderer', 'painters')
+histogram(pmax, 100, 'FaceColor', 'k'); hold on;
+xlabel('$P_{\textrm{max}}$ (\%)', 'Interpreter', 'latex')
+set(gca, 'YTick', [])
+xlim([0 20])
+set(gca, 'FontSize', 20)
+    
 %% Functions
-
 
 function contour_plots(save, savename)
     % Get masks for maria and highlands
