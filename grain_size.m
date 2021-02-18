@@ -14,29 +14,29 @@ fits_pmax_r = load_fits("Pr");
 albedo_b = log10(100*load_fits("Ab"));
 pmax_b = log10(1000*load_fits("Pb"));
 
-%% Interpolate to 650 nm
+%% Interpolate to 630 nm
 
-% interpolate albedo to 650 nm with units log(percentage)
+% interpolate albedo to 630 nm with units log(percentage)
 median_albedo_v = median(median(fits_albedo_v, 'omitnan'), 'omitnan');
 median_albedo_r = median(median(fits_albedo_r, 'omitnan'), 'omitnan');
-albedo_650 = log10( 100 * (fits_albedo_v + (median_albedo_r - median_albedo_v) / (676.3 - 558.6) * (650 - 558.6)) );
+albedo_630 = log10( 100 * (fits_albedo_v + (median_albedo_r - median_albedo_v) / (676.3 - 558.6) * (630 - 558.6)) );
 
-% interpolate pmax to 650 nm with units log(permilli)
+% interpolate pmax to 630 nm with units log(permilli)
 size_pmax = size(fits_pmax_v);
-pmax_650 = zeros(size_pmax);
+pmax_630 = zeros(size_pmax);
 for i = 1:size_pmax(1)
     for j = 1:size_pmax(2)
         slope = (fits_pmax_r(i,j) - fits_pmax_v(i,j) ) / (676.3 - 558.6);
-        pmax_650(i,j) = log10( 1000 * (fits_pmax_v(i,j) + slope * (650 - 558.6)) );
+        pmax_630(i,j) = log10( 1000 * (fits_pmax_v(i,j) + slope * (630 - 558.6)) );
     end
 end
 
-%% Plot 650 nm maps with maria shape
+%% Plot 630 nm maps with maria shape
 
-% plot_map(albedo_650, ' $A$', latitude, longitude, true, 'Albedo650', true)
-%plot_map(pmax_650, ' $A$', latitude, longitude, true, 'Albedo650', true)
+% plot_map(albedo_630, ' $A$', latitude, longitude, true, 'Albedo650', true)
+%plot_map(pmax_630, ' $A$', latitude, longitude, true, 'Albedo650', true)
 
-%% Calculate grain size for 650 nm
+%% Calculate grain size for 630 nm
 
 a = 0.845;
 
@@ -45,8 +45,8 @@ grain_size_SO92 = zeros(size_pixels);
 polarimetric_anomaly = zeros(size_pixels);
 for i = 1:size_pixels(1)
     for j = 1:size_pixels(2)
-        polarimetric_anomaly(i,j) = 10^(pmax_b(i,j)^a)*10^albedo_b(i,j);
-        grain_size_SO92(i,j) = 0.03 * exp( 2.9 * ( albedo_650(i,j) + a * pmax_650(i,j) ) );
+        polarimetric_anomaly(i,j) = 10^(pmax_b(i,j)^0.795)*10^albedo_b(i,j); % for B band
+        grain_size_SO92(i,j) = 0.03 * exp( 2.9 * ( albedo_630(i,j) + a * pmax_630(i,j) ) );
     end
 end
 
@@ -94,8 +94,9 @@ mid = (cbar.Limits(1) + cbar.Limits(2))/2;
 %set(cbar, 'Ticks', round([cbar.Limits(1), mid, cbar.Limits(2)], 2))
 %set(cbar, 'Ticks', round([1.80, 1.93, 2.06], 2))
 %caxis(round(cbar.Limits, 2))
-caxis([1.80 2.10])
-xlabel(cbar, strcat('log d ($\mu$m)'),'Interpreter','latex' )
+% caxis([1.80 2.10])
+caxis([60 130])
+xlabel(cbar, strcat('Median grain size, $\mu$m'),'Interpreter','latex' )
 
 % Adjust width of colorbar
 x1=get(gca,'position');
@@ -111,7 +112,7 @@ set(gca,'position',x1)
 axis off
 set(gca, 'FontSize', 20)
 
-% exportgraphics(gca,'Figures/WP3/grain_size_crameri.png','Resolution', 300)
+% exportgraphics(gca,'Figures/WP3/grain_size.png','Resolution', 300)
 
 %% Visualise Umov's law in 650 nm images
 
@@ -128,7 +129,7 @@ pmax_highlands = pmax_650(highlands_mask);
 % pmax_highlands = pmax_highlands(1:1000,:);
 
 logA = linspace(0.7, 1.6, 10);
-logPmax = log10( (10.^((1.81 - logA)/0.8450))*10); % convert to percent
+logPmax = log10( (10.^((1.871 - logA)/0.7950))*10); % convert to percent
 
 % figure('Position', [500 500 500 500], 'Renderer', 'painters')
 % 
