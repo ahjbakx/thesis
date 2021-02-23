@@ -81,51 +81,18 @@ set(gca, 'FontSize', 20)
 
 % exportgraphics(gca,'Figures/WP3/polarimetric_anomaly.png','Resolution', 300)
 
-%% Plot grain size
-
-figure('Position', [500 500 900 900])
-axesm vperspec
-geoshow(latitude, longitude, grain_size_SO92, 'DisplayType','texturemap')
-
-crameri lajolla
-cbar = colorbar('southoutside');
-
-mid = (cbar.Limits(1) + cbar.Limits(2))/2;
-%set(cbar, 'Ticks', round([cbar.Limits(1), mid, cbar.Limits(2)], 2))
-%set(cbar, 'Ticks', round([1.80, 1.93, 2.06], 2))
-%caxis(round(cbar.Limits, 2))
-% caxis([1.80 2.10])
-caxis([60 130])
-xlabel(cbar, strcat('Median grain size, $\mu$m'),'Interpreter','latex' )
-
-% Adjust width of colorbar
-x1=get(gca,'position');
-x=get(cbar,'Position');
-x(1) = x(1) + 0.1250;
-x(3) = 0.5;
-set(cbar,'Position',x)
-set(gca,'position',x1)
-
-% plotm(0.6875, 23.4333, 'wd', 'MarkerSize', 20, 'LineWidth', 5)
-% geoshow('/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp', 'DisplayType','polygon','FaceColor','none','EdgeColor','k', 'LineWidth', 0.5);
-
-axis off
-set(gca, 'FontSize', 20)
-
-% exportgraphics(gca,'Figures/WP3/grain_size.png','Resolution', 300)
-
-%% Visualise Umov's law in 650 nm images
+%% Visualise Umov's law in 630 nm images
 
 [maria_mask, highlands_mask] = get_maria_and_highlands_mask();
 
-albedo_maria = albedo_650(maria_mask);
+albedo_maria = albedo_630(maria_mask);
 % albedo_maria = albedo_maria(1:1000,:);
-albedo_highlands = albedo_650(highlands_mask);
+albedo_highlands = albedo_630(highlands_mask);
 % albedo_highlands = albedo_highlands(1:1000,:);
 
-pmax_maria = pmax_650(maria_mask);
+pmax_maria = pmax_630(maria_mask);
 % pmax_maria = pmax_maria(1:1000,:);
-pmax_highlands = pmax_650(highlands_mask);
+pmax_highlands = pmax_630(highlands_mask);
 % pmax_highlands = pmax_highlands(1:1000,:);
 
 logA = linspace(0.7, 1.6, 10);
@@ -214,15 +181,90 @@ plot3(logA, logPmax, linspace(max(max(N_maria)),max(max(N_maria)),length(logA)),
 
 %% Compute grain size for different locations
 
-A11_latitude = 0.6875;
-A11_longitude = 23.4333;
+% Apollo 11
+target_longitude = 23.4333;
+target_latitude = 0.6875;
 
-% latmask = latitude == min(latitude(latitude >= A11_latitude));
-% lonmask = longitude == min(longitude(longitude >= A11_longitude));
+% % Apollo 12
+% target_longitude = -23.3856;
+% target_latitude = -3.1975;
+% 
+% % Apollo 14
+% target_longitude = -17.4653;
+% target_latitude = -3.6733;
 
-latmask = latitude >= A11_latitude;
-lonmask = longitude >= A11_longitude;
-pos = latmask & lonmask;
-max(max(pos));
+% % Apollo 15
+% target_longitude = 3.6527;
+% target_latitude = 26.1008;
+
+% Point of interest
+P = [target_longitude, target_latitude];
+
+% Radius of Moon
+RM = 1737;
+
+% Convert the array of lat/lon coordinates to Cartesian vectors
+% ph2cart expects radians
+% use radius 1, so normalisation of vectors not needed
+[X,Y,Z] = sph2cart( longitude*pi/180,  latitude*pi/180, 1);
+
+% Same for point of interest    
+[xP,yP,zP] = sph2cart(P(1)*pi/180, P(2)*pi/180, 1);
+
+% The minimum distance, and the linear index where that distance was found
+% force the dot product into the interval [-1 +1]. This prevents 
+% slight overshoots due to numerical artifacts
+dotProd = xP*X(:) + yP*Y(:) + zP*Z(:);
+[minDist, index] = min( RM*acos( min(max(-1,dotProd),1) ) );
+
+% Convert that linear index to 2D subscripts
+[lon,lat] = ind2sub(size(longitude), index);
+
+grain_size_SO92(lon,lat);
+
+%% Plot grain size
+
+figure('Position', [500 500 900 900])
+axesm vperspec
+geoshow(latitude, longitude, grain_size_SO92, 'DisplayType','texturemap')
 
 
+% Apollo landing sites
+plotm(0.6875, 23.4333, 'xw', 'MarkerSize', 20);
+textm(0.6875, 23.4333,'  A11', 'FontSize', 20, 'Color', 'w')
+
+plotm(-3.1975, -23.3856, 'xw', 'MarkerSize', 20);
+textm(-3.1975, -23.3856,'A12  ', 'FontSize', 20, 'HorizontalAlignment', 'right', 'Color', 'w')
+
+plotm(-3.6733, -17.4653, 'xw', 'MarkerSize', 20);
+textm(-3.6733, -17.4653,'  A14', 'FontSize', 20, 'Color', 'w')
+
+plotm(26.1008, 3.6527, 'xw', 'MarkerSize', 20);
+textm(26.1008, 3.6527,'  A15', 'FontSize', 20, 'Color', 'w')
+
+crameri lajolla
+cbar = colorbar('southoutside');
+
+mid = (cbar.Limits(1) + cbar.Limits(2))/2;
+%set(cbar, 'Ticks', round([cbar.Limits(1), mid, cbar.Limits(2)], 2))
+%set(cbar, 'Ticks', round([1.80, 1.93, 2.06], 2))
+%caxis(round(cbar.Limits, 2))
+% caxis([1.80 2.10])
+caxis([60 130])
+xlabel(cbar, strcat('Median grain size, $\mu$m'),'Interpreter','latex' )
+
+% Adjust width of colorbar
+x1=get(gca,'position');
+x=get(cbar,'Position');
+x(1) = x(1) + 0.1250;
+x(3) = 0.5;
+set(cbar,'Position',x)
+set(gca,'position',x1)
+
+% plotm(0.6875, 23.4333, 'wd', 'MarkerSize', 20, 'LineWidth', 5)
+% geoshow('/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp', 'DisplayType','polygon','FaceColor','none','EdgeColor','k', 'LineWidth', 0.5);
+
+axis off
+set(gca, 'FontSize', 20)
+
+% exportgraphics(gca,'Figures/WP3/grain_size.png','Resolution', 300)
