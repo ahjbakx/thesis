@@ -60,19 +60,30 @@ db = a*xhat(2)*sqrt( (da/a)^2 + (dx2/xhat(2))^2 );
 
 
 
-%% Visualise 630 nm data with regression line
+%% Split into total, maria and highlands
 
 [maria_mask, highlands_mask] = get_maria_and_highlands_mask();
 
+latitude_total = latitude(longitude>-99);
+latitude_maria = latitude(maria_mask);
+latitude_highlands = latitude(highlands_mask);
+
+longitude_total = longitude(longitude>-99);
+longitude_maria = longitude(maria_mask);
+longitude_highlands = longitude(highlands_mask);
+
+albedo_total = albedo_630(longitude>-99);
 albedo_maria = albedo_630(maria_mask);
 albedo_highlands = albedo_630(highlands_mask);
 
+pmax_total = pmax_630(longitude>-99);
 pmax_maria = pmax_630(maria_mask);
 pmax_highlands = pmax_630(highlands_mask);
 
 maria = [albedo_maria, pmax_maria];
 highlands = [albedo_highlands, pmax_highlands];
 
+%% Visualise 630 nm data with regression line
 
 logA = linspace(0.7, 1.6, 10);
 logPmax = log10( (10.^((1.871 - logA)/0.7950))*10); % convert to percent
@@ -131,6 +142,9 @@ grain_size_SO92 = get_grain_size(albedo_630, pmax_630, a_SO92);
 
 grain_size_self = get_grain_size(albedo_630, pmax_630, a);
 
+grain_size_total = grain_size_self(longitude>-99);
+grain_size_maria = grain_size_self(maria_mask);
+grain_size_highlands = grain_size_self(highlands_mask);
 
 %% Plot polarimetric anomaly
 
@@ -214,7 +228,56 @@ set(gca, 'FontSize', 20)
 % grid on
 % set(gca, 'FontSize', 20)
 
+%% Visualise Grain size as function of selenographic latitude
+close all;
 
+grain_size_latitude_total = [grain_size_total(abs(latitude_total) < 15); grain_size_total(abs(latitude_total) > 15 & abs(latitude_total) < 30 ); grain_size_total(abs(latitude_total) > 30 & abs(latitude_total) < 50); grain_size_total(abs(latitude_total) > 50);
+    grain_size_maria(abs(latitude_maria) < 15); grain_size_maria( abs(latitude_maria) > 15 & abs(latitude_maria) < 30); grain_size_maria(abs(latitude_maria) > 30 & abs(latitude_maria) < 50); grain_size_maria(abs(latitude_maria) > 50);
+    grain_size_highlands(abs(latitude_highlands) < 15); grain_size_highlands(abs(latitude_highlands) > 15 & abs(latitude_highlands) < 30); grain_size_highlands(abs(latitude_highlands) > 30 & abs(latitude_highlands) < 50); grain_size_highlands(abs(latitude_highlands) > 50)];
+
+latitudes_total = [repmat([1], length(grain_size_total(abs(latitude_total) < 15)), 1);
+                   repmat([5], length(grain_size_total(abs(latitude_total) > 15 & abs(latitude_total) < 30  )), 1);
+                   repmat([9], length(grain_size_total(abs(latitude_total) > 30 & abs(latitude_total) < 50 )), 1);
+                   repmat([13], length(grain_size_total(abs(latitude_total) > 50)), 1);
+                   
+                   repmat([2], length(grain_size_maria(abs(latitude_maria) < 15)), 1);
+                   repmat([6], length(grain_size_maria(abs(latitude_maria) > 15 & abs(latitude_maria) < 30 )), 1);
+                   repmat([10], length(grain_size_maria(abs(latitude_maria) > 30 & abs(latitude_maria) < 50 )), 1);
+                   repmat([14], length(grain_size_maria(abs(latitude_maria) > 50)), 1);
+                   
+                   repmat([3], length(grain_size_highlands(abs(latitude_highlands) < 15)), 1);
+                   repmat([7], length(grain_size_highlands(abs(latitude_highlands) > 15 & abs(latitude_highlands) < 30 )), 1);
+                   repmat([11], length(grain_size_highlands(abs(latitude_highlands) > 30 & abs(latitude_highlands) < 50 )), 1);
+                   repmat([15], length(grain_size_highlands(abs(latitude_highlands) > 50)), 1)];
+
+               
+
+positions = [1 1.25 1.5 2 2.25 2.5 3 3.25 3.5 4 4.25 4.5];
+
+
+figure('Position', [500 500 900 450])
+
+b = boxplot(grain_size_latitude_total,latitudes_total, 'positions', positions, 'Notch','on', 'Symbol','', 'Whisker', 0);
+
+set(gca,'XTickLabel',{'',[char(946) ' < 15', char(176)], '', '', ['15',char(176),' < ', char(946) ' < 30',char(176)], '', '', ['30',char(176),' < ', char(946) ' < 50',char(176)], '', '', [char(946) ' > 50',char(176)], ''} )
+
+color = [[0, 0.4470, 0.7410]; [0.8500, 0.3250, 0.0980]; [0 0 0]; [0, 0.4470, 0.7410]; [0.8500, 0.3250, 0.0980]; [0 0 0]; [0, 0.4470, 0.7410]; [0.8500, 0.3250, 0.0980]; [0 0 0]; [0, 0.4470, 0.7410]; [0.8500, 0.3250, 0.0980]; [0 0 0]];
+h = findobj(gca,'Tag','Box');
+for j=1:length(h)
+   set(h(j), 'Color', color(j,:))
+end
+
+% c = get(gca, 'Children');
+% 
+[~, hobj, ~, ~] = legend([b(4,4), b(5,5), b(5,6)], 'total', 'maria', 'highlands' );
+hl = findobj(hobj,'type','line');
+set(hl,'LineWidth',1.5);
+ht = findobj(hobj,'type','text');
+set(ht,'FontSize',20);
+
+ylabel(['Median grain size, ', char(181), 'm'], 'Interpreter', 'latex')
+set(gca, 'FontSize', 20)
+ylim([65 100])
 
 
 %% Compute grain size for different locations
@@ -222,23 +285,32 @@ set(gca, 'FontSize', 20)
 % Apollo 11
 A11_longitude = 23.4333;
 A11_latitude = 0.6875;
-[g11, dg11] = get_grain_size_at_lat_lon(grain_size_self, a, da, A11_latitude, A11_longitude)
+[g11, dg11, A11, Pmax11, dA11, dPmax11] = get_grain_size_at_lat_lon(grain_size_self, a_SO92, 0.001, A11_latitude, A11_longitude, albedo_630, pmax_630)
 
 % Apollo 12
 A12_longitude = -23.3856;
 A12_latitude = -3.1975;
-[g12, dg12] = get_grain_size_at_lat_lon(grain_size_self, a, da, A12_latitude, A12_longitude)
+[g12, dg12, A12, Pmax12, dA12, dPmax12] = get_grain_size_at_lat_lon(grain_size_SO92, a_SO92, 0.001, A12_latitude, A12_longitude, albedo_630, pmax_630)
 
 % Apollo 14
 A14_longitude = -17.4653;
 A14_latitude = -3.6733;
-[g14, dg14] = get_grain_size_at_lat_lon(grain_size_self, a, da, A14_latitude, A14_longitude)
+[g14, dg14, A14, Pmax14, dA14, dPmax14] = get_grain_size_at_lat_lon(grain_size_SO92, a_SO92, 0.001, A14_latitude, A14_longitude, albedo_630, pmax_630)
 
 % Apollo 15
 A15_longitude = 3.6527;
 A15_latitude = 26.1008;
-[g15, dg15] = get_grain_size_at_lat_lon(grain_size_self, a, da, A15_latitude, A15_longitude)
+[g15, dg15, A15, Pmax15, dA15, dPmax15] = get_grain_size_at_lat_lon(grain_size_SO92, a_SO92, 0.001, A15_latitude, A15_longitude, albedo_630, pmax_630)
 
+% Apollo 16
+A16_longitude = 15.5144;
+A16_latitude = -8.9913;
+[g16, dg16, A16, Pmax16, dA16, dPmax16] = get_grain_size_at_lat_lon(grain_size_SO92, a_SO92, 0.001, A16_latitude, A16_longitude, albedo_630, pmax_630)
+
+% Apollo 17
+A17_longitude = 30.7658;
+A17_latitude = 20.1653;
+[g17, dg17, A17, Pmax17, dA17, dPmax17] = get_grain_size_at_lat_lon(grain_size_SO92, a_SO92, 0.001, A17_latitude, A17_longitude, albedo_630, pmax_630)
 
 
 %% Plot grain size
@@ -249,17 +321,25 @@ geoshow(latitude, longitude, grain_size_SO92, 'DisplayType','texturemap')
 
 
 % Apollo landing sites
-plotm(A11_latitude, A11_longitude, 'xw', 'MarkerSize', 20);
+plotm(A11_latitude, A11_longitude, '.w', 'MarkerSize', 20);
 textm(A11_latitude, A11_longitude,'  A11', 'FontSize', 20, 'Color', 'w')
 
-plotm(A12_latitude, A12_longitude, 'xw', 'MarkerSize', 20);
+plotm(A12_latitude, A12_longitude, '.w', 'MarkerSize', 20);
 textm(A12_latitude, A12_longitude,'A12  ', 'FontSize', 20, 'HorizontalAlignment', 'right', 'Color', 'w')
 
-plotm(A14_latitude, A14_longitude, 'xw', 'MarkerSize', 20);
+plotm(A14_latitude, A14_longitude, '.w', 'MarkerSize', 20);
 textm(A14_latitude, A14_longitude,'  A14', 'FontSize', 20, 'Color', 'w')
 
-plotm(A15_latitude, A15_longitude, 'xw', 'MarkerSize', 20);
+plotm(A15_latitude, A15_longitude, '.w', 'MarkerSize', 20);
 textm(A15_latitude, A15_longitude,'  A15', 'FontSize', 20, 'Color', 'w')
+
+
+plotm(A16_latitude, A16_longitude, '.w', 'MarkerSize', 20);
+textm(A16_latitude, A16_longitude,'  A16', 'FontSize', 20, 'Color', 'w')
+
+plotm(A17_latitude, A17_longitude, '.w', 'MarkerSize', 20);
+textm(A17_latitude, A17_longitude,'  A17', 'FontSize', 20, 'Color', 'w')
+
 
 crameri lajolla
 cbar = colorbar('southoutside');
@@ -307,7 +387,7 @@ function grain_size = get_grain_size(albedo_630, pmax_630, a)
 
 end
 
-function [g, dg] = get_grain_size_at_lat_lon(grain_size, a, da, target_latitude, target_longitude)
+function [g, dg, A, Pmax, dA, dPmax] = get_grain_size_at_lat_lon(grain_size, a, da, target_latitude, target_longitude, albedo, pmax)
     
     latitude = load_fits("latitude");
     longitude = load_fits("longitude");
@@ -334,7 +414,11 @@ function [g, dg] = get_grain_size_at_lat_lon(grain_size, a, da, target_latitude,
 
     % Convert that linear index to 2D subscripts
     [lon,lat] = ind2sub(size(longitude), index);
-
+    
+    A = 10^albedo(lon, lat);
+    dA = 0.8/100*A;
+    Pmax = 10^pmax(lon, lat);
+    dPmax = 0.8/100*Pmax;
     g = grain_size(lon,lat);
     dg = get_uncertainty(10^(latitude(lon, lat)), 10^(longitude(lon,lat)), g, a, da);
 end
