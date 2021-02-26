@@ -162,24 +162,7 @@ axesm vperspec
 geoshow(latitude, longitude, polarimetric_anomaly, 'DisplayType','texturemap')
 
 colormap gray
-% cbar = colorbar('southoutside');
-
-% mid = (cbar.Limits(1) + cbar.Limits(2))/2;
-%set(cbar, 'Ticks', round([cbar.Limits(1), mid, cbar.Limits(2)], 2))
-%set(cbar, 'Ticks', round([1.80, 1.93, 2.06], 2))
-%caxis(round(cbar.Limits, 2))
-% xlabel(cbar, '$b=(P_{\textrm{max}})^aA$','Interpreter','latex' )
-caxis([300 800])
-% Adjust width of colorbar
-% x1=get(gca,'position');
-% x=get(cbar,'Position');
-% x(1) = x(1) + 0.1250;
-% x(3) = 0.5;
-% set(cbar,'Position',x)
-% set(gca,'position',x1)
-
-% plotm(0.6875, 23.4333, 'wd', 'MarkerSize', 20, 'LineWidth', 5)
-% geoshow('/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp', 'DisplayType','polygon','FaceColor','none','EdgeColor','k', 'LineWidth', 0.5);
+caxis([300 710])
 
 axis off
 set(gca, 'FontSize', 20)
@@ -365,11 +348,6 @@ textm(-8.9, 61.1, 'Langrenus   ', 'FontSize', 20, 'HorizontalAlignment', 'right'
 crameri nuuk
 cbar = colorbar('southoutside');
 
-mid = (cbar.Limits(1) + cbar.Limits(2))/2;
-%set(cbar, 'Ticks', round([cbar.Limits(1), mid, cbar.Limits(2)], 2))
-%set(cbar, 'Ticks', round([1.80, 1.93, 2.06], 2))
-%caxis(round(cbar.Limits, 2))
-% caxis([1.80 2.10])
 caxis([50 110])
 xlabel(cbar, strcat('Median grain size, $\mu$m'),'Interpreter','latex' )
 
@@ -388,6 +366,39 @@ axis off
 set(gca, 'FontSize', 20)
 
 % exportgraphics(gca,'Figures/WP3/grain_size.png','Resolution', 300)
+
+%% Local plots
+close all;
+
+% Apollo 15 landing site
+lat_min = 9.4308;
+lat_max = 42.7708;
+lon_min = -13.0174;
+lon_max = 20.3226;
+
+local_mask = latitude > lat_min & latitude < lat_max & longitude > lon_min & longitude < lon_max;
+
+figure('Position', [500 500 900 900])
+axesm('mollweid', 'MapLatLimit',[lat_min lat_max]', 'MapLonLimit', [lon_min lon_max])
+geoshow(latitude, longitude, grain_size_self, 'DisplayType','texturemap')
+
+crameri nuuk
+cbar = colorbar('southoutside');
+
+
+caxis([50 110])
+xlabel(cbar, strcat('Median grain size, $\mu$m'),'Interpreter','latex' )
+
+% Adjust width of colorbar
+x1=get(gca,'position');
+x=get(cbar,'Position');
+x(1) = x(1)+0.08;
+x(3) = 0.5;
+set(cbar,'Position',x)
+set(gca,'position',x1)
+
+axis off
+set(gca, 'FontSize', 20)
 
 %% Functions
 
