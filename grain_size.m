@@ -52,10 +52,10 @@ b = a * xhat(2);
 py = cov(y);
 px = inv(transpose(H)*inv(py)*H);
 
-dx1 = px(1,1);
+dx1 = sqrt(px(1,1));
 da = xhat(1)^2*dx1;
 
-dx2 = px(2,2);
+dx2 = sqrt(px(2,2));
 db = a*xhat(2)*sqrt( (da/a)^2 + (dx2/xhat(2))^2 );
 
 
@@ -249,11 +249,8 @@ latitudes_total = [repmat([1], length(grain_size_total(abs(latitude_total) < 15)
                    repmat([7], length(grain_size_highlands(abs(latitude_highlands) > 15 & abs(latitude_highlands) < 30 )), 1);
                    repmat([11], length(grain_size_highlands(abs(latitude_highlands) > 30 & abs(latitude_highlands) < 50 )), 1);
                    repmat([15], length(grain_size_highlands(abs(latitude_highlands) > 50)), 1)];
-
-               
-
+            
 positions = [1 1.25 1.5 2 2.25 2.5 3 3.25 3.5 4 4.25 4.5];
-
 
 figure('Position', [500 500 900 450])
 
@@ -266,58 +263,63 @@ h = findobj(gca,'Tag','Box');
 for j=1:length(h)
    set(h(j), 'Color', color(j,:))
 end
+lines = findobj(gcf, 'type', 'line', 'Tag', 'Median');
+for j = 1:length(lines)
+    set(lines(j), 'Color', color(j,:));
+end
 
 % c = get(gca, 'Children');
 % 
-[~, hobj, ~, ~] = legend([b(4,4), b(5,5), b(5,6)], 'total', 'maria', 'highlands' );
+[~, hobj, ~, ~] = legend([b(4,4), b(5,5), b(5,6)], {'total', 'maria', 'highlands'}, 'Position',[0.15 0.7 0.2 0.2]  );
 hl = findobj(hobj,'type','line');
 set(hl,'LineWidth',1.5);
 ht = findobj(hobj,'type','text');
 set(ht,'FontSize',20);
 
-ylabel(['Median grain size, ', char(181), 'm'], 'Interpreter', 'latex')
+ylabel(['Median grain size, ', char(181), 'm'])
 set(gca, 'FontSize', 20)
 ylim([65 100])
 
+% exportgraphics(gca,'Figures/WP3/latitude-dependency.png','Resolution', 300)
 
 %% Compute grain size for different locations
 
 % Apollo 11
 A11_longitude = 23.4333;
 A11_latitude = 0.6875;
-[g11, dg11, A11, Pmax11, dA11, dPmax11] = get_grain_size_at_lat_lon(grain_size_self, a_SO92, 0.001, A11_latitude, A11_longitude, albedo_630, pmax_630)
+[g11, dg11, A11, Pmax11, dA11, dPmax11] = get_grain_size_at_lat_lon(grain_size_self, a, da, A11_latitude, A11_longitude, albedo_630, pmax_630);
 
 % Apollo 12
 A12_longitude = -23.3856;
 A12_latitude = -3.1975;
-[g12, dg12, A12, Pmax12, dA12, dPmax12] = get_grain_size_at_lat_lon(grain_size_SO92, a_SO92, 0.001, A12_latitude, A12_longitude, albedo_630, pmax_630)
+[g12, dg12, A12, Pmax12, dA12, dPmax12] = get_grain_size_at_lat_lon(grain_size_self, a, da, A12_latitude, A12_longitude, albedo_630, pmax_630);
 
 % Apollo 14
 A14_longitude = -17.4653;
 A14_latitude = -3.6733;
-[g14, dg14, A14, Pmax14, dA14, dPmax14] = get_grain_size_at_lat_lon(grain_size_SO92, a_SO92, 0.001, A14_latitude, A14_longitude, albedo_630, pmax_630)
+[g14, dg14, A14, Pmax14, dA14, dPmax14] = get_grain_size_at_lat_lon(grain_size_self, a, da, A14_latitude, A14_longitude, albedo_630, pmax_630);
 
 % Apollo 15
 A15_longitude = 3.6527;
 A15_latitude = 26.1008;
-[g15, dg15, A15, Pmax15, dA15, dPmax15] = get_grain_size_at_lat_lon(grain_size_SO92, a_SO92, 0.001, A15_latitude, A15_longitude, albedo_630, pmax_630)
+[g15, dg15, A15, Pmax15, dA15, dPmax15] = get_grain_size_at_lat_lon(grain_size_self, a, da, A15_latitude, A15_longitude, albedo_630, pmax_630);
 
 % Apollo 16
 A16_longitude = 15.5144;
 A16_latitude = -8.9913;
-[g16, dg16, A16, Pmax16, dA16, dPmax16] = get_grain_size_at_lat_lon(grain_size_SO92, a_SO92, 0.001, A16_latitude, A16_longitude, albedo_630, pmax_630)
+[g16, dg16, A16, Pmax16, dA16, dPmax16] = get_grain_size_at_lat_lon(grain_size_self, a, da, A16_latitude, A16_longitude, albedo_630, pmax_630);
 
 % Apollo 17
 A17_longitude = 30.7658;
 A17_latitude = 20.1653;
-[g17, dg17, A17, Pmax17, dA17, dPmax17] = get_grain_size_at_lat_lon(grain_size_SO92, a_SO92, 0.001, A17_latitude, A17_longitude, albedo_630, pmax_630)
+[g17, dg17, A17, Pmax17, dA17, dPmax17] = get_grain_size_at_lat_lon(grain_size_self, a, da, A17_latitude, A17_longitude, albedo_630, pmax_630);
 
 
 %% Plot grain size
 
 figure('Position', [500 500 900 900])
 axesm vperspec
-geoshow(latitude, longitude, grain_size_SO92, 'DisplayType','texturemap')
+geoshow(latitude, longitude, grain_size_self, 'DisplayType','texturemap')
 
 
 % Apollo landing sites
@@ -340,8 +342,27 @@ textm(A16_latitude, A16_longitude,'  A16', 'FontSize', 20, 'Color', 'w')
 plotm(A17_latitude, A17_longitude, '.w', 'MarkerSize', 20);
 textm(A17_latitude, A17_longitude,'  A17', 'FontSize', 20, 'Color', 'w')
 
+plotm(23.7, -47.4, 'ow', 'MarkerSize', 20);
+textm(23.7, -47.4,'   Aristarchus', 'FontSize', 20, 'Color', 'w')
 
-crameri lajolla
+plotm(9.7, -20.1, 'ow', 'MarkerSize', 30);
+textm(9.7, -20.1,'   Copernicus', 'FontSize', 20, 'Color', 'w')
+
+plotm(-43.4, -11.1, 'ow', 'MarkerSize', 30);
+textm(-43.4, -11.1,'   Tycho', 'FontSize', 20, 'Color', 'w')
+
+plotm(8.1,-38, 'ow', 'MarkerSize', 30);
+textm(8.1,-38,'Kepler   ', 'FontSize', 20, 'HorizontalAlignment', 'right', 'Color', 'w')
+
+plotm(-24.7, -65.3, 'ow', 'MarkerSize', 30);
+textm(-24.7, -65.3, '   Byrgius', 'FontSize', 20, 'Color', 'w')
+
+
+plotm(-8.9, 61.1, 'ow', 'MarkerSize', 30);
+textm(-8.9, 61.1, 'Langrenus   ', 'FontSize', 20, 'HorizontalAlignment', 'right', 'Color', 'w')
+
+
+crameri nuuk
 cbar = colorbar('southoutside');
 
 mid = (cbar.Limits(1) + cbar.Limits(2))/2;
@@ -349,7 +370,7 @@ mid = (cbar.Limits(1) + cbar.Limits(2))/2;
 %set(cbar, 'Ticks', round([1.80, 1.93, 2.06], 2))
 %caxis(round(cbar.Limits, 2))
 % caxis([1.80 2.10])
-caxis([60 130])
+caxis([50 110])
 xlabel(cbar, strcat('Median grain size, $\mu$m'),'Interpreter','latex' )
 
 % Adjust width of colorbar
