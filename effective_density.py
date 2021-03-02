@@ -31,8 +31,6 @@ hlm = pysh.datasets.Moon.MoonTopo2600p(lmax=1200)
 # set angular rotation rate (for centripetal force)
 clm.set_omega(constants.Moon.omega.value) 
 
-G = 6.67408e-11
-
 #%% Calculate effective density
 
 bc = pysh.SHGravCoeffs.from_shape(hlm, rho=1., gm=clm.gm, lmax=lmax)
