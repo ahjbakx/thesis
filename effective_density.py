@@ -1,7 +1,7 @@
 """
 Created on Tue Feb  9 12:40:48 2021
 
-@author: aaron
+@author: ahjbakx
 """
 
 import pyshtools as pysh

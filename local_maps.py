@@ -1,7 +1,7 @@
 """
 Created on Fri Feb  5 13:39:54 2021
 
-@author: aaron
+@author: ahjbakx
 
 plot a local image of a pre-specified region of interest
 

@@ -1,7 +1,7 @@
 """
 Created on Tue Mar  2 10:15:14 2021
 
-@author: aaron
+@author: ahjbakx
 
 Localised spectral analysis - multitaper approach
 
@@ -26,7 +26,7 @@ pysh.utils.figstyle(rel_width=0.5)
 # Maximum degree
 lmin=250
 lmax=650
-lwin = 58
+lwin = 11
 
 
 # clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
@@ -55,8 +55,8 @@ global_eff_dens = gobs.admittance(ghat)
 #%% Define multitaper spherical caps
 
 clat = 0.
-clon = 270.
-caprad = 15.
+clon = 90.
+caprad = 82.5
 concentration_threshold = 0.99
 
 # Construct spherical caps with certain radius and bandwith
@@ -64,6 +64,7 @@ capwin = pysh.SHWindow.from_cap(theta=caprad, lwin=lwin)
 
 # Use the best caps above a concentration threshold
 k = capwin.number_concentrated(concentration_threshold)
+print('Number of best spherical caps: ', k)
 
 # Rotate best spherical caps to lonlat of interest
 capwin.rotate(clat=clat, clon=clon, nwinrot=k)

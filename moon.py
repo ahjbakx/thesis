@@ -1,7 +1,7 @@
 """
 Created on Thu Feb  4 09:41:53 2021
 
-@author: aaron
+@author: ahjbakx
 
 Calculate & plot:
     * power spectrum
