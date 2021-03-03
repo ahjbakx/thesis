@@ -17,6 +17,7 @@ from matplotlib import pyplot as plt
 from pyshtools import constants
 from cartopy import crs as ccrs
 from palettable import scientific as scm
+from scipy import interpolate
 
 # Width of image with respect to (journal) page
 pysh.utils.figstyle(rel_width=0.5)
@@ -24,9 +25,9 @@ pysh.utils.figstyle(rel_width=0.5)
 #%% Load data
 
 # Maximum degree
-lmin=250
-lmax=650
-lwin = 11
+lmin = 250
+lmax = 650
+lwin = 58
 
 
 # clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
@@ -56,7 +57,7 @@ global_eff_dens = gobs.admittance(ghat)
 
 clat = 0.
 clon = 90.
-caprad = 82.5
+caprad = 15.
 concentration_threshold = 0.99
 
 # Construct spherical caps with certain radius and bandwith
@@ -102,6 +103,81 @@ print('Initial guess:\n', 'a=', xhat[0], '+-', np.sqrt(Px[0,0]), '\n',
       'effective density +- is', np.sqrt(Px[0,0] + Px[1,1]))
 
 eff_dens_th = xhat[1] + xhat[0]/k
+
+#%% Add to grid
+
+def my_interpolate(array, lons, lats, method):
+    
+    array = np.ma.masked_invalid(lingrad)
+    xx, yy = np.meshgrid(longrid, latgrid)
+    
+    #get only the valid values
+    x1 = xx[~array.mask]
+    y1 = yy[~array.mask]
+    newarr = array[~array.mask]
+    
+    interpolated = interpolate.griddata((x1, y1), 
+                                        newarr.ravel(),
+                                        (xx, yy),
+                                        method=method)
+    
+    return interpolated
+
+latrange = [90, -90]
+lonrange = [90, -270]
+fillres = 10
+gridres = 1
+
+latgrid = np.arange(latrange[0], latrange[1]-gridres, -gridres)
+longrid = np.arange(lonrange[0], lonrange[1]-gridres, -gridres)
+
+lingrad = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
+lingrad[:] = np.nan
+linsurf = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
+linsurf[:] = np.nan
+
+# clat_index = np.where(latgrid == clat)[0][0]
+# clon_index = np.where(longrid == clon)[0][0]
+
+# fill dummy matrix
+latfills = np.arange(0, np.int(180/gridres+1), np.int(fillres/gridres))
+lonfills = np.arange(0, np.int(360/gridres+1), np.int(fillres/gridres))
+
+np.random.seed(seed=0)
+for lat in latfills:
+    for lon in lonfills:
+        lingrad[lat, lon] = np.random.rand()
+
+
+# lingrad[clat_index, clon_index] = xhat[0]
+# linsurf[clat_index, clon_index] = xhat[1]
+
+lingrad_interpolated = my_interpolate(lingrad, longrid, latgrid, 'cubic')
+
+
+lingrad_grid = pysh.SHGrid.from_array(lingrad_interpolated)
+
+
+fig, ax = lingrad_grid.plot(ccrs.Mollweide(central_longitude=180.),
+                        cmap=scm.diverging.Vik_20.mpl_colormap,
+                        cmap_limits = [0, 1],
+                        colorbar='bottom',
+                        cb_triangles='both',
+                        grid = False,
+                        show = False)
+
+#%% Plot 
+
+latmesh, lonmesh = np.meshgrid(latgrid, longrid)
+
+plt.figure(figsize=(3,3))       
+plt.contourf(lonmesh, latmesh, np.transpose(lingrad_interpolated),
+             cmap = scm.sequential.Devon_20.mpl_colormap) 
+plt.colorbar()
+plt.xlabel('Linear density gradient, kg/m^3/km')
+plt.ylabel('Linear surface density, kg/m^3')
+
+
 
 #%% Plot local spectrum
 
