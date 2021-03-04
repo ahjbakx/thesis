@@ -13,11 +13,15 @@ Localised spectral analysis - multitaper approach
 
 import pyshtools as pysh
 import numpy as np
+import os
+from datetime import datetime
 from matplotlib import pyplot as plt
 from pyshtools import constants
 from cartopy import crs as ccrs
 from palettable import scientific as scm
 from scipy import interpolate
+
+path = "/Users/aaron/thesis/Results/"
 
 # Width of image with respect to (journal) page
 pysh.utils.figstyle(rel_width=0.5)
@@ -54,9 +58,11 @@ global_eff_dens = gobs.admittance(ghat)
 
 
 #%% Define multitaper spherical caps
-
 caprad = 15.
 concentration_threshold = 0.99
+
+# Additional comments to README file
+comments = "linear"
 
 # Construct spherical caps with certain radius and bandwith
 capwin = pysh.SHWindow.from_cap(theta=caprad, lwin=lwin)
@@ -75,13 +81,13 @@ def make_empty_matrix(latrange, lonrange, gridres):
     return empty_matrix
 
 latrange = [90, -90]
-lonrange = [0, 360]
+lonrange = [-180, 180]
 fillres = 10 # grid to be filled by LS parameters
 gridres = 1 # finer grid to be interpolated
 
 # Set up lonlat values for fine grid
 latgrid = np.arange(latrange[0], latrange[1]-gridres, -gridres)
-longrid = np.arange(lonrange[0], lonrange[1]-gridres, -gridres)
+longrid = np.arange(lonrange[0], lonrange[1]+gridres, gridres)
 
 # Construct matrices to be filled
 lingrad = make_empty_matrix(latrange, lonrange, gridres) # linear density gradient
@@ -92,17 +98,41 @@ dlinsurf = make_empty_matrix(latrange, lonrange, gridres) # uncertainty surface 
 # clat_index = np.where(latgrid == clat)[0][0]
 # clon_index = np.where(longrid == clon)[0][0]
 
-# Construct latlon **indices** of fill grid w.r.t. fine grid
-latfills = np.arange(0, np.int(180/gridres+1), np.int(fillres/gridres))
-lonfills = np.arange(0, np.int(360/gridres+1), np.int(fillres/gridres))
 
+# Fill first with dummy data
+latdummies = np.arange(0, np.int(180/gridres+1), np.int(fillres/gridres))
+londummies = np.arange(0, np.int(360/gridres+1), np.int(fillres/gridres))
+np.random.seed(seed=1)
+for lat in latdummies:
+    for lon in londummies:
+        lingrad[lat, lon] = np.random.rand()
+        linsurf[lat, lon] = np.random.rand()
+        dlingrad[lat, lon] = np.random.rand()
+        dlinsurf[lat, lon] = np.random.rand()
+
+# Construct latlon **indices** of fill grid w.r.t. fine grid
+latfills = np.arange(-90, 90+1, fillres)
+lonfills = np.arange(-90, 90+1, fillres)
+
+# Fill nearside with actual data
 for lat in latfills:
     for lon in lonfills:
         
-        # # dummy (fill with random values)
-        # np.random.seed(seed=0)
-        # lingrad[lat, lon] = np.random.rand()
+        clat_index = np.where(np.isclose(latgrid, lat))[0][0]
+        clon_index = np.where(np.isclose(longrid, lon))[0][0]
         
+        clat = latgrid[clat_index]
+        clon = longrid[clon_index]
+        
+        print('Latitude = ', lat, 'Longitude = ', lon)
+        
+        lingrad[clat_index, clon_index] = 10
+        linsurf[clat_index, clon_index] = 10
+        dlingrad[clat_index, clon_index] = 10
+        dlinsurf[clat_index, clon_index] = 10
+        continue
+        
+        # let hier ff op ook
         clat = np.float( latgrid[lat] )
         clon = np.float( longrid[lon] )
         
@@ -123,7 +153,6 @@ for lat in latfills:
         local_eff_dens = mtxs_topograv / mts_bc
 
         # Least squares fit of local spectrum
-        
         k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1))/(clm.r0/1000)
         x = 1/k
         y = local_eff_dens[lmin:lmax+1]
@@ -137,16 +166,47 @@ for lat in latfills:
         
         Px = np.linalg.inv( 1/np.cov(y)*np.matmul(np.transpose(H), H) )
         
-        
-        #TODO: add data to grid
+        # Add data to grid
+        lingrad[lat, lon] = xhat[0]
+        linsurf[lat, lon] = xhat[1]
+        dlingrad[lat, lon] = np.sqrt(Px[0,0])
+        dlinsurf[lat, lon] = np.sqrt(Px[1,1])
         
         # print('Initial guess:\n', 'a=', xhat[0], '+-', np.sqrt(Px[0,0]), '\n', 
         #       'rho=', xhat[1], '+-', np.sqrt(Px[1,1]), '\n',
         #       'effective density +- is', np.sqrt(Px[0,0] + Px[1,1]))
         
         # eff_dens_th = xhat[1] + xhat[0]/k
+        
+#%% Save arrays to files
+try:
+    # Make directory for results
+    dirpath = path + "result_" + datetime.now().strftime('%d-%m-%y_%H-%M-%S') + "/"
+    os.mkdir(dirpath)
+    
+    # Write input parameters to file
+    f = open(dirpath + "README.txt", "x")
+    f.write("lmin = " + str(lmin) + "\n" + "lmax = " + str(lmax) + "\n" +
+            "lwin = " + str(lwin) + "\n" + "caprad = " + str(caprad) + "\n" +
+            "latrange = " + str(latrange) + "\n" + "lonrange = " + str(lonrange) + "\n" +
+            "fillres = " + str(fillres) + "\n" + "gridres = " + str(gridres) + "\n" +
+            "comments = " + comments)
+    f.close()
+    
+    # Save arrays
+    np.save(dirpath + "lingrad", lingrad)
+    np.save(dirpath + "linsurf", linsurf)
+    np.save(dirpath + "dlingrad", dlingrad)
+    np.save(dirpath + "dlinsurf", dlinsurf)
+    
+except OSError:
+    print ("Creation of the directory %s failed" % dirpath)   
+else:
+    print ("Successfully written results to %s" % dirpath)
 
-#%% Add to grid
+
+
+#%% Interpolate data to finer grid
 
 def my_interpolate(array, lons, lats, method):
     
@@ -163,8 +223,8 @@ def my_interpolate(array, lons, lats, method):
                                         (xx, yy),
                                         method=method)
     
+    
     return interpolated
-
 
 
 
@@ -172,19 +232,18 @@ def my_interpolate(array, lons, lats, method):
 # linsurf[clat_index, clon_index] = xhat[1]
 
 #TODO re-arrange data matrices such that 270 is at center (e.g. 180)
-lingrad_interpolated = my_interpolate(lingrad, longrid, latgrid, 'cubic')
-
+lingrad_interpolated = my_interpolate(lingrad, longrid, latgrid, 'nearest')
 
 lingrad_grid = pysh.SHGrid.from_array(lingrad_interpolated)
 
-
-fig, ax = lingrad_grid.plot(ccrs.Mollweide(central_longitude=180.),
-                        cmap=scm.diverging.Vik_20.mpl_colormap,
-                        cmap_limits = [0, 1],
-                        colorbar='bottom',
-                        cb_triangles='both',
-                        grid = False,
-                        show = False)
+fig, ax = lingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
+                               cmap=scm.diverging.Vik_20.mpl_colormap,
+                               cmap_limits = [0, 1],
+                               colorbar='bottom',
+                               cb_triangles='both',
+                               grid=True,
+                               show=False
+                               )
 
 #%% Plot 
 
