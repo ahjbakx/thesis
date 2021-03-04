@@ -55,8 +55,6 @@ global_eff_dens = gobs.admittance(ghat)
 
 #%% Define multitaper spherical caps
 
-clat = 0.
-clon = 90.
 caprad = 15.
 concentration_threshold = 0.99
 
@@ -67,42 +65,86 @@ capwin = pysh.SHWindow.from_cap(theta=caprad, lwin=lwin)
 k = capwin.number_concentrated(concentration_threshold)
 print('Number of best spherical caps: ', k)
 
-# Rotate best spherical caps to lonlat of interest
-capwin.rotate(clat=clat, clon=clon, nwinrot=k)
+#%% Initialise grid to be filled by least squares fits
 
-# Determine multitaper (local) spectrum of Bouguer correction
-mts_bc, mt_bc_sd = capwin.multitaper_spectrum(ghat, k,
-                                                    clat=clat,
-                                                    clon=clon)
+def make_empty_matrix(latrange, lonrange, gridres):
+    
+    empty_matrix = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
+    empty_matrix[:] = np.nan
+    
+    return empty_matrix
 
-# Determine multitaper (local) cross spectrum of gravity and Bouguer correction
-mtxs_topograv, mt_topograv_sd = capwin.multitaper_cross_spectrum(ghat, gobs, k,
-                                                    clat=clat,
-                                                    clon=clon)
+latrange = [90, -90]
+lonrange = [0, 360]
+fillres = 10 # grid to be filled by LS parameters
+gridres = 1 # finer grid to be interpolated
 
-# Calculate local effective density
-local_eff_dens = mtxs_topograv / mts_bc
+# Set up lonlat values for fine grid
+latgrid = np.arange(latrange[0], latrange[1]-gridres, -gridres)
+longrid = np.arange(lonrange[0], lonrange[1]-gridres, -gridres)
 
-#%% Least squares fit of local spectrum
+# Construct matrices to be filled
+lingrad = make_empty_matrix(latrange, lonrange, gridres) # linear density gradient
+linsurf = make_empty_matrix(latrange, lonrange, gridres) # linear surface density
+dlingrad = make_empty_matrix(latrange, lonrange, gridres) # uncertainty linear gradient
+dlinsurf = make_empty_matrix(latrange, lonrange, gridres) # uncertainty surface density
 
-k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1))/(clm.r0/1000)
-x = 1/k
-y = local_eff_dens[lmin:lmax+1]
+# clat_index = np.where(latgrid == clat)[0][0]
+# clon_index = np.where(longrid == clon)[0][0]
 
-H = np.ones((len(x), 2));
-for i in range(len(x)):
-    H[i,0] = x[i]
+# Construct latlon **indices** of fill grid w.r.t. fine grid
+latfills = np.arange(0, np.int(180/gridres+1), np.int(fillres/gridres))
+lonfills = np.arange(0, np.int(360/gridres+1), np.int(fillres/gridres))
 
-xhat = np.matmul(np.matmul(np.linalg.inv(np.matmul(np.transpose(H),H)), np.transpose(H)),y)
-yhat = np.matmul(H, xhat)
+for lat in latfills:
+    for lon in lonfills:
+        
+        # # dummy (fill with random values)
+        # np.random.seed(seed=0)
+        # lingrad[lat, lon] = np.random.rand()
+        
+        clat = np.float( latgrid[lat] )
+        clon = np.float( longrid[lon] )
+        
+        # Rotate best spherical caps to lonlat of interest
+        capwin.rotate(clat=clat, clon=clon, nwinrot=k)
+        
+        # Determine multitaper (local) spectrum of Bouguer correction
+        mts_bc, mt_bc_sd = capwin.multitaper_spectrum(ghat, k,
+                                                            clat=clat,
+                                                            clon=clon)
+        
+        # Determine multitaper (local) cross spectrum of gravity and Bouguer correction
+        mtxs_topograv, mt_topograv_sd = capwin.multitaper_cross_spectrum(ghat, gobs, k,
+                                                            clat=clat,
+                                                            clon=clon)
+        
+        # Calculate local effective density
+        local_eff_dens = mtxs_topograv / mts_bc
 
-Px = np.linalg.inv( 1/np.cov(y)*np.matmul(np.transpose(H), H) )
-
-print('Initial guess:\n', 'a=', xhat[0], '+-', np.sqrt(Px[0,0]), '\n', 
-      'rho=', xhat[1], '+-', np.sqrt(Px[1,1]), '\n',
-      'effective density +- is', np.sqrt(Px[0,0] + Px[1,1]))
-
-eff_dens_th = xhat[1] + xhat[0]/k
+        # Least squares fit of local spectrum
+        
+        k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1))/(clm.r0/1000)
+        x = 1/k
+        y = local_eff_dens[lmin:lmax+1]
+        
+        H = np.ones((len(x), 2));
+        for i in range(len(x)):
+            H[i,0] = x[i]
+        
+        xhat = np.matmul(np.matmul(np.linalg.inv(np.matmul(np.transpose(H),H)), np.transpose(H)),y)
+        yhat = np.matmul(H, xhat)
+        
+        Px = np.linalg.inv( 1/np.cov(y)*np.matmul(np.transpose(H), H) )
+        
+        
+        #TODO: add data to grid
+        
+        # print('Initial guess:\n', 'a=', xhat[0], '+-', np.sqrt(Px[0,0]), '\n', 
+        #       'rho=', xhat[1], '+-', np.sqrt(Px[1,1]), '\n',
+        #       'effective density +- is', np.sqrt(Px[0,0] + Px[1,1]))
+        
+        # eff_dens_th = xhat[1] + xhat[0]/k
 
 #%% Add to grid
 
@@ -123,35 +165,13 @@ def my_interpolate(array, lons, lats, method):
     
     return interpolated
 
-latrange = [90, -90]
-lonrange = [90, -270]
-fillres = 10
-gridres = 1
 
-latgrid = np.arange(latrange[0], latrange[1]-gridres, -gridres)
-longrid = np.arange(lonrange[0], lonrange[1]-gridres, -gridres)
-
-lingrad = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
-lingrad[:] = np.nan
-linsurf = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
-linsurf[:] = np.nan
-
-# clat_index = np.where(latgrid == clat)[0][0]
-# clon_index = np.where(longrid == clon)[0][0]
-
-# fill dummy matrix
-latfills = np.arange(0, np.int(180/gridres+1), np.int(fillres/gridres))
-lonfills = np.arange(0, np.int(360/gridres+1), np.int(fillres/gridres))
-
-np.random.seed(seed=0)
-for lat in latfills:
-    for lon in lonfills:
-        lingrad[lat, lon] = np.random.rand()
 
 
 # lingrad[clat_index, clon_index] = xhat[0]
 # linsurf[clat_index, clon_index] = xhat[1]
 
+#TODO re-arrange data matrices such that 270 is at center (e.g. 180)
 lingrad_interpolated = my_interpolate(lingrad, longrid, latgrid, 'cubic')
 
 
