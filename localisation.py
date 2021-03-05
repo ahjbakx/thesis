@@ -8,12 +8,14 @@ Localised spectral analysis - multitaper approach
     * spherical caps of given radius and bandwith
     * local effective density spectrum
     * linear least-squares fit of compaction models
-
+    * append fitting parameters to grid and interpolate to finer grid
+    
 """
 
 import pyshtools as pysh
 import numpy as np
 import os
+import time
 from datetime import datetime
 from matplotlib import pyplot as plt
 from pyshtools import constants
@@ -28,13 +30,14 @@ pysh.utils.figstyle(rel_width=0.5)
 
 #%% Load data
 
-# Maximum degree
+""" Degree inputs """
 lmin = 250
 lmax = 650
 lwin = 58
 
 
 # clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
+""" Import GRAIL GRGM1200B RM1 10 model """
 clm = pysh.SHGravCoeffs.from_file('/Users/aaron/thesis/Data/moon_gravity/sha.grgm1200b_rm1_1e1_sigma.txt',
                                   r0_index=1,
                                   gm_index=0,
@@ -42,7 +45,7 @@ clm = pysh.SHGravCoeffs.from_file('/Users/aaron/thesis/Data/moon_gravity/sha.grg
 
 hlm = pysh.datasets.Moon.MoonTopo2600p(lmax=lmax+lwin)
 
-# set angular rotation rate (for centripetal force)
+""" set angular rotation rate (for centripetal force) """
 clm.set_omega(constants.Moon.omega.value) 
 
 spectrum = clm.spectrum(function='total', lmax=lmax+lwin)
@@ -57,21 +60,17 @@ gobs = pysh.SHCoeffs.from_array(clm.coeffs)
 global_eff_dens = gobs.admittance(ghat)
 
 
-#%% Define multitaper spherical caps
+
+#%% Localised Spectral Analysis: Multitaper Spherical Cap Approach
+
+""" Define spherical cap radius and concentration threshold """
 caprad = 15.
 concentration_threshold = 0.99
 
-# Additional comments to README file
+""" Additional comments to README file """
 comments = "linear"
 
-# Construct spherical caps with certain radius and bandwith
-capwin = pysh.SHWindow.from_cap(theta=caprad, lwin=lwin)
-
-# Use the best caps above a concentration threshold
-k = capwin.number_concentrated(concentration_threshold)
-print('Number of best spherical caps: ', k)
-
-#%% Initialise grid to be filled by least squares fits
+start_time = time.time()
 
 def make_empty_matrix(latrange, lonrange, gridres):
     
@@ -81,25 +80,21 @@ def make_empty_matrix(latrange, lonrange, gridres):
     return empty_matrix
 
 latrange = [90, -90]
-lonrange = [-180, 180]
+lonrange = [-180, 180] # Not 0-360 due to interpolation discontinuity on nearside
 fillres = 10 # grid to be filled by LS parameters
 gridres = 1 # finer grid to be interpolated
 
-# Set up lonlat values for fine grid
+""" Set up lonlat values for fine grid """
 latgrid = np.arange(latrange[0], latrange[1]-gridres, -gridres)
 longrid = np.arange(lonrange[0], lonrange[1]+gridres, gridres)
 
-# Construct matrices to be filled
+""" Construct matrices to be filled """
 lingrad = make_empty_matrix(latrange, lonrange, gridres) # linear density gradient
 linsurf = make_empty_matrix(latrange, lonrange, gridres) # linear surface density
 dlingrad = make_empty_matrix(latrange, lonrange, gridres) # uncertainty linear gradient
 dlinsurf = make_empty_matrix(latrange, lonrange, gridres) # uncertainty surface density
 
-# clat_index = np.where(latgrid == clat)[0][0]
-# clon_index = np.where(longrid == clon)[0][0]
-
-
-# Fill first with dummy data
+""" Fill first with dummy data """
 latdummies = np.arange(0, np.int(180/gridres+1), np.int(fillres/gridres))
 londummies = np.arange(0, np.int(360/gridres+1), np.int(fillres/gridres))
 np.random.seed(seed=1)
@@ -110,49 +105,53 @@ for lat in latdummies:
         dlingrad[lat, lon] = np.random.rand()
         dlinsurf[lat, lon] = np.random.rand()
 
-# Construct latlon **indices** of fill grid w.r.t. fine grid
+""" Construct latlon **indices** of fill grid w.r.t. fine grid """
 latfills = np.arange(-90, 90+1, fillres)
 lonfills = np.arange(-90, 90+1, fillres)
 
-# Fill nearside with actual data
+""" Fill nearside with actual data """
 for lat in latfills:
     for lon in lonfills:
         
         clat_index = np.where(np.isclose(latgrid, lat))[0][0]
         clon_index = np.where(np.isclose(longrid, lon))[0][0]
         
-        clat = latgrid[clat_index]
-        clon = longrid[clon_index]
+        clat = np.float( latgrid[clat_index] )
+        clon = np.float( longrid[clon_index] )
         
-        print('Latitude = ', lat, 'Longitude = ', lon)
+        print('Latitude = ', clat, 'Longitude = ', clon)
         
-        lingrad[clat_index, clon_index] = 10
-        linsurf[clat_index, clon_index] = 10
-        dlingrad[clat_index, clon_index] = 10
-        dlinsurf[clat_index, clon_index] = 10
-        continue
+        # Dummy data
+        # lingrad[clat_index, clon_index] = 10*np.random.rand()
+        # linsurf[clat_index, clon_index] = 10*np.random.rand()
+        # dlingrad[clat_index, clon_index] = 10*np.random.rand()
+        # dlinsurf[clat_index, clon_index] = 10*np.random.rand()
+        # continue
+    
+        """ Construct spherical caps with certain radius and bandwith """
+        capwin = pysh.SHWindow.from_cap(theta=caprad, lwin=lwin)
         
-        # let hier ff op ook
-        clat = np.float( latgrid[lat] )
-        clon = np.float( longrid[lon] )
-        
-        # Rotate best spherical caps to lonlat of interest
+        """ Use the best caps above a concentration threshold """
+        k = capwin.number_concentrated(concentration_threshold)
+        #print('Number of best spherical caps: ', k)
+    
+        """ Rotate best spherical caps to lonlat of interest """
         capwin.rotate(clat=clat, clon=clon, nwinrot=k)
         
-        # Determine multitaper (local) spectrum of Bouguer correction
+        """ Determine multitaper (local) spectrum of Bouguer correction """
         mts_bc, mt_bc_sd = capwin.multitaper_spectrum(ghat, k,
                                                             clat=clat,
                                                             clon=clon)
         
-        # Determine multitaper (local) cross spectrum of gravity and Bouguer correction
+        """ Determine multitaper (local) cross spectrum of gravity and Bouguer correction """
         mtxs_topograv, mt_topograv_sd = capwin.multitaper_cross_spectrum(ghat, gobs, k,
                                                             clat=clat,
                                                             clon=clon)
         
-        # Calculate local effective density
+        """ Calculate local effective density """
         local_eff_dens = mtxs_topograv / mts_bc
 
-        # Least squares fit of local spectrum
+        """ Least squares fit of local spectrum """
         k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1))/(clm.r0/1000)
         x = 1/k
         y = local_eff_dens[lmin:lmax+1]
@@ -166,11 +165,11 @@ for lat in latfills:
         
         Px = np.linalg.inv( 1/np.cov(y)*np.matmul(np.transpose(H), H) )
         
-        # Add data to grid
-        lingrad[lat, lon] = xhat[0]
-        linsurf[lat, lon] = xhat[1]
-        dlingrad[lat, lon] = np.sqrt(Px[0,0])
-        dlinsurf[lat, lon] = np.sqrt(Px[1,1])
+        """ Add data to grid """
+        lingrad[clat_index, clon_index] = xhat[0]
+        linsurf[clat_index, clon_index] = xhat[1]
+        dlingrad[clat_index, clon_index] = np.sqrt(Px[0,0])
+        dlinsurf[clat_index, clon_index] = np.sqrt(Px[1,1])
         
         # print('Initial guess:\n', 'a=', xhat[0], '+-', np.sqrt(Px[0,0]), '\n', 
         #       'rho=', xhat[1], '+-', np.sqrt(Px[1,1]), '\n',
@@ -178,13 +177,15 @@ for lat in latfills:
         
         # eff_dens_th = xhat[1] + xhat[0]/k
         
-#%% Save arrays to files
+print("Finished! Runtime: ", round((time.time() - start_time)/60,2), "minutes" )
+      
+""" Save arrays to files """
 try:
-    # Make directory for results
+    """ Make directory for results """
     dirpath = path + "result_" + datetime.now().strftime('%d-%m-%y_%H-%M-%S') + "/"
     os.mkdir(dirpath)
     
-    # Write input parameters to file
+    """ Write input parameters to file """
     f = open(dirpath + "README.txt", "x")
     f.write("lmin = " + str(lmin) + "\n" + "lmax = " + str(lmax) + "\n" +
             "lwin = " + str(lwin) + "\n" + "caprad = " + str(caprad) + "\n" +
@@ -193,7 +194,7 @@ try:
             "comments = " + comments)
     f.close()
     
-    # Save arrays
+    """ Save arrays """
     np.save(dirpath + "lingrad", lingrad)
     np.save(dirpath + "linsurf", linsurf)
     np.save(dirpath + "dlingrad", dlingrad)
@@ -206,7 +207,9 @@ else:
 
 
 
-#%% Interpolate data to finer grid
+#%% Interpolate data to finer grid and plot
+
+save_figures=True
 
 def my_interpolate(array, lons, lats, method):
     
@@ -226,24 +229,45 @@ def my_interpolate(array, lons, lats, method):
     
     return interpolated
 
-
-
-# lingrad[clat_index, clon_index] = xhat[0]
-# linsurf[clat_index, clon_index] = xhat[1]
-
-#TODO re-arrange data matrices such that 270 is at center (e.g. 180)
-lingrad_interpolated = my_interpolate(lingrad, longrid, latgrid, 'nearest')
+lingrad_interpolated = my_interpolate(lingrad, longrid, latgrid, 'cubic')
 
 lingrad_grid = pysh.SHGrid.from_array(lingrad_interpolated)
 
 fig, ax = lingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
-                               cmap=scm.diverging.Vik_20.mpl_colormap,
-                               cmap_limits = [0, 1],
+                               cmap=scm.diverging.Cork_20.mpl_colormap,
+                               cmap_limits = [-75, 75],
                                colorbar='bottom',
+                               cb_tick_interval = 25,
+                               cb_label='Linear density gradient, kg/m$^3$/km',
                                cb_triangles='both',
                                grid=True,
                                show=False
                                )
+
+if save_figures:
+    fig.savefig('/Users/aaron/thesis/Figures/WP4/lindensgrad.pdf', 
+                format='pdf', 
+                dpi=150)
+    
+linsurf_interpolated = my_interpolate(linsurf, longrid, latgrid, 'nearest')
+
+linsurf_grid = pysh.SHGrid.from_array(linsurf_interpolated)
+
+fig, ax = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
+                               cmap=scm.diverging.Broc_20.mpl_colormap,
+                               cmap_limits = [2300, 2800],
+                               colorbar='bottom',
+                               cb_tick_interval = 100,
+                               cb_label='Linear surface density, kg/m$^3$',
+                               cb_triangles='both',
+                               grid=True,
+                               show=False
+                               )
+
+if save_figures:
+    fig.savefig('/Users/aaron/thesis/Figures/WP4/linsurfdens.pdf', 
+                format='pdf', 
+                dpi=150)
 
 #%% Plot 
 
