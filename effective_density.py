@@ -17,8 +17,8 @@ pysh.utils.figstyle(rel_width=0.5)
 #%% Load data
 
 # Maximum degree
-lmin=250
-lmax=650
+lmin=0
+lmax=1200
 
 # clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
 clm = pysh.SHGravCoeffs.from_file('/Users/aaron/thesis/Data/moon_gravity/sha.grgm1200b_rm1_1e1_sigma.txt',
@@ -41,6 +41,7 @@ gobs = pysh.SHCoeffs.from_array(clm.coeffs)
 
 degs = np.arange(lmin, lmax+1)
 eff_dens = gobs.admittance(ghat)
+admittance = clm.admittance(hlm)
 corr = gobs.correlation(ghat)
 
 #%% Least squares
@@ -102,19 +103,39 @@ plt.ylabel('Linear surface density, kg/m^3')
 
 #%% Plots
 ctud=[0,0.65,0.84]
+
 fig, ax = plt.subplots()
-eff_dens_th = xhat[1] + xhat[0]/k
-d_eff_dens_th = np.sqrt(Px[0,0] + Px[1,1])
-ax.plot(degs, eff_dens[lmin:lmax+1,0], label='observed', color='black', linewidth=0.5, linestyle='dotted')
-ax.plot(degs, eff_dens_th, label='theoretical', color=ctud)
-ax.plot(degs, eff_dens_th + d_eff_dens_th, linewidth=0.75, color=ctud, linestyle='--', label='uncertainty fit')
-ax.plot(degs, eff_dens_th - d_eff_dens_th, linewidth=0.75, color=ctud, linestyle='--')
-ax.set_ylabel('Effective density, kg/m$^3$')
-ax.set_xlabel('Spherical harmonic degree')
+ax.plot(degs[11:1201], admittance[11:1201,0], 'k', linewidth=0.5)
 ax.grid()
-ax.set_ylim(2350, 2600)
-ax.set_xlim(lmin, lmax)
-ax.legend()
+ax.set(xlim=(lmin, lmax), ylim=(0, 500),
+        ylabel="Admittance, mGal/km", xlabel="Spherical harmonic degree")
+ax2=ax.twinx()
+ax2.plot(degs[41:1200], corr[41:1200],color=ctud, linewidth=0.5)
+ax2.set_ylabel("Correlation [-]",color=ctud)
+ax2.set(ylim=(0.8, 1), yticks=[0.8, 0.85, 0.9, 0.95, 1.0])
+
+
+# fig, ax = plt.subplots()
+# ax.plot(degs[40:1193], eff_dens[40:1193,0], color=ctud, linewidth=0.5)
+# ax.grid()
+# ax.set(xlim=(lmin, lmax), ylim=(2350, 3000),
+#        ylabel="Effective density, kg/m$^3$", xlabel="Spherical harmonic degree")
+
+
+# ctud=[0,0.65,0.84]
+# fig, ax = plt.subplots()
+# eff_dens_th = xhat[1] + xhat[0]/k
+# d_eff_dens_th = np.sqrt(Px[0,0] + Px[1,1])
+# ax.plot(degs, eff_dens[lmin:lmax+1,0], label='observed', color='black', linewidth=0.5, linestyle='dotted')
+# ax.plot(degs, eff_dens_th, label='theoretical', color=ctud)
+# ax.plot(degs, eff_dens_th + d_eff_dens_th, linewidth=0.75, color=ctud, linestyle='--', label='uncertainty fit')
+# ax.plot(degs, eff_dens_th - d_eff_dens_th, linewidth=0.75, color=ctud, linestyle='--')
+# ax.set_ylabel('Effective density, kg/m$^3$')
+# ax.set_xlabel('Spherical harmonic degree')
+# ax.grid()
+# ax.set_ylim(2350, 2600)
+# ax.set_xlim(lmin, lmax)
+# ax.legend()
 
 # plt.figure(figsize=(6,2))
 # plt.plot(degs, corr[lmin:lmax+1])
