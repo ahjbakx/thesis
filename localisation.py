@@ -66,6 +66,7 @@ global_eff_dens = gobs.admittance(ghat)
 """ Define spherical cap radius and concentration threshold """
 caprad = 15.
 concentration_threshold = 0.99
+fill = False
 
 """ Additional comments to README file """
 comments = "linear"
@@ -104,78 +105,80 @@ for lat in latdummies:
         linsurf[lat, lon] = np.random.rand()
         dlingrad[lat, lon] = np.random.rand()
         dlinsurf[lat, lon] = np.random.rand()
+        
+if fill:
 
-""" Construct latlon **indices** of fill grid w.r.t. fine grid """
-latfills = np.arange(-90, 90+1, fillres)
-lonfills = np.arange(-90, 90+1, fillres)
-
-""" Fill nearside with actual data """
-for lat in latfills:
-    for lon in lonfills:
-        
-        clat_index = np.where(np.isclose(latgrid, lat))[0][0]
-        clon_index = np.where(np.isclose(longrid, lon))[0][0]
-        
-        clat = np.float( latgrid[clat_index] )
-        clon = np.float( longrid[clon_index] )
-        
-        print('Latitude = ', clat, 'Longitude = ', clon)
-        
-        # Dummy data
-        # lingrad[clat_index, clon_index] = 10*np.random.rand()
-        # linsurf[clat_index, clon_index] = 10*np.random.rand()
-        # dlingrad[clat_index, clon_index] = 10*np.random.rand()
-        # dlinsurf[clat_index, clon_index] = 10*np.random.rand()
-        # continue
+    """ Construct latlon **indices** of fill grid w.r.t. fine grid """
+    latfills = np.arange(-90, 90+1, fillres)
+    lonfills = np.arange(-90, 90+1, fillres)
     
-        """ Construct spherical caps with certain radius and bandwith """
-        capwin = pysh.SHWindow.from_cap(theta=caprad, lwin=lwin)
+    """ Fill nearside with actual data """
+    for lat in latfills:
+        for lon in lonfills:
+            
+            clat_index = np.where(np.isclose(latgrid, lat))[0][0]
+            clon_index = np.where(np.isclose(longrid, lon))[0][0]
+            
+            clat = np.float( latgrid[clat_index] )
+            clon = np.float( longrid[clon_index] )
+            
+            print('Latitude = ', clat, 'Longitude = ', clon)
+            
+            # Dummy data
+            # lingrad[clat_index, clon_index] = 10*np.random.rand()
+            # linsurf[clat_index, clon_index] = 10*np.random.rand()
+            # dlingrad[clat_index, clon_index] = 10*np.random.rand()
+            # dlinsurf[clat_index, clon_index] = 10*np.random.rand()
+            # continue
         
-        """ Use the best caps above a concentration threshold """
-        k = capwin.number_concentrated(concentration_threshold)
-        #print('Number of best spherical caps: ', k)
+            """ Construct spherical caps with certain radius and bandwith """
+            capwin = pysh.SHWindow.from_cap(theta=caprad, lwin=lwin)
+            
+            """ Use the best caps above a concentration threshold """
+            k = capwin.number_concentrated(concentration_threshold)
+            #print('Number of best spherical caps: ', k)
+        
+            """ Rotate best spherical caps to lonlat of interest """
+            capwin.rotate(clat=clat, clon=clon, nwinrot=k)
+            
+            """ Determine multitaper (local) spectrum of Bouguer correction """
+            mts_bc, mt_bc_sd = capwin.multitaper_spectrum(ghat, k,
+                                                                clat=clat,
+                                                                clon=clon)
+            
+            """ Determine multitaper (local) cross spectrum of gravity and Bouguer correction """
+            mtxs_topograv, mt_topograv_sd = capwin.multitaper_cross_spectrum(ghat, gobs, k,
+                                                                clat=clat,
+                                                                clon=clon)
+            
+            """ Calculate local effective density """
+            local_eff_dens = mtxs_topograv / mts_bc
     
-        """ Rotate best spherical caps to lonlat of interest """
-        capwin.rotate(clat=clat, clon=clon, nwinrot=k)
-        
-        """ Determine multitaper (local) spectrum of Bouguer correction """
-        mts_bc, mt_bc_sd = capwin.multitaper_spectrum(ghat, k,
-                                                            clat=clat,
-                                                            clon=clon)
-        
-        """ Determine multitaper (local) cross spectrum of gravity and Bouguer correction """
-        mtxs_topograv, mt_topograv_sd = capwin.multitaper_cross_spectrum(ghat, gobs, k,
-                                                            clat=clat,
-                                                            clon=clon)
-        
-        """ Calculate local effective density """
-        local_eff_dens = mtxs_topograv / mts_bc
-
-        """ Least squares fit of local spectrum """
-        k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1))/(clm.r0/1000)
-        x = 1/k
-        y = local_eff_dens[lmin:lmax+1]
-        
-        H = np.ones((len(x), 2));
-        for i in range(len(x)):
-            H[i,0] = x[i]
-        
-        xhat = np.matmul(np.matmul(np.linalg.inv(np.matmul(np.transpose(H),H)), np.transpose(H)),y)
-        yhat = np.matmul(H, xhat)
-        
-        Px = np.linalg.inv( 1/np.cov(y)*np.matmul(np.transpose(H), H) )
-        
-        """ Add data to grid """
-        lingrad[clat_index, clon_index] = xhat[0]
-        linsurf[clat_index, clon_index] = xhat[1]
-        dlingrad[clat_index, clon_index] = np.sqrt(Px[0,0])
-        dlinsurf[clat_index, clon_index] = np.sqrt(Px[1,1])
-        
-        # print('Initial guess:\n', 'a=', xhat[0], '+-', np.sqrt(Px[0,0]), '\n', 
-        #       'rho=', xhat[1], '+-', np.sqrt(Px[1,1]), '\n',
-        #       'effective density +- is', np.sqrt(Px[0,0] + Px[1,1]))
-        
-        # eff_dens_th = xhat[1] + xhat[0]/k
+            """ Least squares fit of local spectrum """
+            k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1))/(clm.r0/1000)
+            x = 1/k
+            y = local_eff_dens[lmin:lmax+1]
+            
+            H = np.ones((len(x), 2));
+            for i in range(len(x)):
+                H[i,0] = x[i]
+            
+            xhat = np.matmul(np.matmul(np.linalg.inv(np.matmul(np.transpose(H),H)), np.transpose(H)),y)
+            yhat = np.matmul(H, xhat)
+            
+            Px = np.linalg.inv( 1/np.cov(y)*np.matmul(np.transpose(H), H) )
+            
+            """ Add data to grid """
+            lingrad[clat_index, clon_index] = xhat[0]
+            linsurf[clat_index, clon_index] = xhat[1]
+            dlingrad[clat_index, clon_index] = np.sqrt(Px[0,0])
+            dlinsurf[clat_index, clon_index] = np.sqrt(Px[1,1])
+            
+            # print('Initial guess:\n', 'a=', xhat[0], '+-', np.sqrt(Px[0,0]), '\n', 
+            #       'rho=', xhat[1], '+-', np.sqrt(Px[1,1]), '\n',
+            #       'effective density +- is', np.sqrt(Px[0,0] + Px[1,1]))
+            
+            # eff_dens_th = xhat[1] + xhat[0]/k
         
 print("Finished! Runtime: ", round((time.time() - start_time)/60,2), "minutes" )
       
@@ -207,68 +210,89 @@ else:
 
 
 
-#%% Interpolate data to finer grid and plot
-
+# Interpolate data to finer grid and plot
+import_data=False
 save_figures=True
+
+if import_data:
+    dirpath = path + "result_" + "04-03-21_19-19-16/"
+    lingrad = np.load(dirpath + "lingrad.npy")
+    linsurf = np.load(dirpath + "linsurf.npy")
+    dlingrad = np.load(dirpath + "dlingrad.npy")
+    dlinsurf = np.load(dirpath + "dlinsurf.npy")
+
 
 def my_interpolate(array, lons, lats, method):
     
-    array = np.ma.masked_invalid(lingrad)
-    xx, yy = np.meshgrid(longrid, latgrid)
-    
+    array = np.ma.masked_invalid( array)
+    xx, yy = np.meshgrid(lons, lats)
     #get only the valid values
     x1 = xx[~array.mask]
     y1 = yy[~array.mask]
     newarr = array[~array.mask]
-    
     interpolated = interpolate.griddata((x1, y1), 
                                         newarr.ravel(),
                                         (xx, yy),
                                         method=method)
-    
-    
     return interpolated
 
 lingrad_interpolated = my_interpolate(lingrad, longrid, latgrid, 'cubic')
-
 lingrad_grid = pysh.SHGrid.from_array(lingrad_interpolated)
-
-fig, ax = lingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
-                               cmap=scm.diverging.Cork_20.mpl_colormap,
-                               cmap_limits = [-75, 75],
-                               colorbar='bottom',
-                               cb_tick_interval = 25,
-                               cb_label='Linear density gradient, kg/m$^3$/km',
-                               cb_triangles='both',
-                               grid=True,
-                               show=False
-                               )
-
-if save_figures:
-    fig.savefig('/Users/aaron/thesis/Figures/WP4/lindensgrad.pdf', 
-                format='pdf', 
-                dpi=150)
-    
-linsurf_interpolated = my_interpolate(linsurf, longrid, latgrid, 'nearest')
-
-linsurf_grid = pysh.SHGrid.from_array(linsurf_interpolated)
-
-fig, ax = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
+fig1, ax1 = lingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                cmap=scm.diverging.Broc_20.mpl_colormap,
-                               cmap_limits = [2300, 2800],
+                               cmap_limits = [-80, 80],
                                colorbar='bottom',
-                               cb_tick_interval = 100,
-                               cb_label='Linear surface density, kg/m$^3$',
+                               cb_label='Linear density gradient, kg/m$^3$/km',
+                               cb_tick_interval = 40,
                                cb_triangles='both',
                                grid=True,
                                show=False
                                )
+    
+linsurf_interpolated = my_interpolate(linsurf, longrid, latgrid, 'cubic')
+linsurf_grid = pysh.SHGrid.from_array(linsurf_interpolated)
+fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
+                                cmap=scm.sequential.Davos_20.mpl_colormap,
+                                cmap_limits = [1999, 2800],
+                                colorbar='bottom',
+                                cb_tick_interval = 200,
+                                cb_label='Linear surface density, kg/m$^3$',
+                                cb_triangles='both',
+                                grid=True,
+                                show=False
+                                )
+  
+dlingrad_interpolated = my_interpolate(dlingrad, longrid, latgrid, 'cubic')
+dlingrad_grid = pysh.SHGrid.from_array(dlingrad_interpolated)
+fig3, ax3 = dlingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
+                               cmap=scm.diverging.Broc_20.mpl_colormap,
+                               cmap_limits = [-0.001, 5.],
+                               colorbar='bottom',
+                               cb_label='Linear density gradient, kg/m$^3$/km',
+                               cb_tick_interval = 1,
+                               cb_triangles='both',
+                               grid=True,
+                               show=False
+                               )
+   
+dlinsurf_interpolated = my_interpolate(dlinsurf, longrid, latgrid, 'cubic')
+dlinsurf_grid = pysh.SHGrid.from_array(dlinsurf_interpolated)
+fig4, ax4 = dlinsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
+                                cmap=scm.sequential.Davos_20.mpl_colormap,
+                                cmap_limits = [-0.001, 20.],
+                                colorbar='bottom',
+                                cb_tick_interval = 5,
+                                cb_label='Linear surface density, kg/m$^3$',
+                                cb_triangles='both',
+                                grid=True,
+                                show=False
+                                )
 
 if save_figures:
-    fig.savefig('/Users/aaron/thesis/Figures/WP4/linsurfdens.pdf', 
-                format='pdf', 
-                dpi=150)
-
+    fig1.savefig(dirpath + "/lindensgrad.pdf", format='pdf', dpi=150)
+    fig2.savefig(dirpath + "linsurfdens.pdf", format='pdf', dpi=150)
+    fig3.savefig(dirpath + "/uncertainty_lindensgrad.pdf", format='pdf', dpi=150)
+    fig4.savefig(dirpath + "uncertainty_linsurfdens.pdf", format='pdf', dpi=150)
 #%% Plot 
 
 latmesh, lonmesh = np.meshgrid(latgrid, longrid)
