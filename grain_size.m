@@ -305,50 +305,51 @@ axesm vperspec
 geoshow(latitude, longitude, grain_size_self, 'DisplayType','texturemap')
 
 
-% Apollo landing sites
-plotm(A11_latitude, A11_longitude, '.w', 'MarkerSize', 20);
-textm(A11_latitude, A11_longitude,'  A11', 'FontSize', 20, 'Color', 'w')
-
-plotm(A12_latitude, A12_longitude, '.w', 'MarkerSize', 20);
-textm(A12_latitude, A12_longitude,'A12  ', 'FontSize', 20, 'HorizontalAlignment', 'right', 'Color', 'w')
-
-plotm(A14_latitude, A14_longitude, '.w', 'MarkerSize', 20);
-textm(A14_latitude, A14_longitude,'  A14', 'FontSize', 20, 'Color', 'w')
-
-plotm(A15_latitude, A15_longitude, '.w', 'MarkerSize', 20);
-textm(A15_latitude, A15_longitude,'  A15', 'FontSize', 20, 'Color', 'w')
-
-
-plotm(A16_latitude, A16_longitude, '.w', 'MarkerSize', 20);
-textm(A16_latitude, A16_longitude,'  A16', 'FontSize', 20, 'Color', 'w')
-
-plotm(A17_latitude, A17_longitude, '.w', 'MarkerSize', 20);
-textm(A17_latitude, A17_longitude,'  A17', 'FontSize', 20, 'Color', 'w')
-
-plotm(23.7, -47.4, 'ow', 'MarkerSize', 20);
-textm(23.7, -47.4,'   Aristarchus', 'FontSize', 20, 'Color', 'w')
-
-plotm(9.7, -20.1, 'ow', 'MarkerSize', 30);
-textm(9.7, -20.1,'   Copernicus', 'FontSize', 20, 'Color', 'w')
-
-plotm(-43.4, -11.1, 'ow', 'MarkerSize', 30);
-textm(-43.4, -11.1,'   Tycho', 'FontSize', 20, 'Color', 'w')
-
-plotm(8.1,-38, 'ow', 'MarkerSize', 30);
-textm(8.1,-38,'Kepler   ', 'FontSize', 20, 'HorizontalAlignment', 'right', 'Color', 'w')
-
-plotm(-24.7, -65.3, 'ow', 'MarkerSize', 30);
-textm(-24.7, -65.3, '   Byrgius', 'FontSize', 20, 'Color', 'w')
-
-
-plotm(-8.9, 61.1, 'ow', 'MarkerSize', 30);
-textm(-8.9, 61.1, 'Langrenus   ', 'FontSize', 20, 'HorizontalAlignment', 'right', 'Color', 'w')
+% % Apollo landing sites
+% plotm(A11_latitude, A11_longitude, '.w', 'MarkerSize', 20);
+% textm(A11_latitude, A11_longitude,'  A11', 'FontSize', 20, 'Color', 'w')
+% 
+% plotm(A12_latitude, A12_longitude, '.w', 'MarkerSize', 20);
+% textm(A12_latitude, A12_longitude,'A12  ', 'FontSize', 20, 'HorizontalAlignment', 'right', 'Color', 'w')
+% 
+% plotm(A14_latitude, A14_longitude, '.w', 'MarkerSize', 20);
+% textm(A14_latitude, A14_longitude,'  A14', 'FontSize', 20, 'Color', 'w')
+% 
+% plotm(A15_latitude, A15_longitude, '.w', 'MarkerSize', 20);
+% textm(A15_latitude, A15_longitude,'  A15', 'FontSize', 20, 'Color', 'w')
+% 
+% 
+% plotm(A16_latitude, A16_longitude, '.w', 'MarkerSize', 20);
+% textm(A16_latitude, A16_longitude,'  A16', 'FontSize', 20, 'Color', 'w')
+% 
+% plotm(A17_latitude, A17_longitude, '.w', 'MarkerSize', 20);
+% textm(A17_latitude, A17_longitude,'  A17', 'FontSize', 20, 'Color', 'w')
+% 
+% % Craters
+% plotm(23.7, -47.4, 'ow', 'MarkerSize', 20);
+% textm(23.7, -47.4,'   Aristarchus', 'FontSize', 20, 'Color', 'w')
+% 
+% plotm(9.7, -20.1, 'ow', 'MarkerSize', 30);
+% textm(9.7, -20.1,'   Copernicus', 'FontSize', 20, 'Color', 'w')
+% 
+% plotm(-43.4, -11.1, 'ow', 'MarkerSize', 30);
+% textm(-43.4, -11.1,'   Tycho', 'FontSize', 20, 'Color', 'w')
+% 
+% plotm(8.1,-38, 'ow', 'MarkerSize', 30);
+% textm(8.1,-38,'Kepler   ', 'FontSize', 20, 'HorizontalAlignment', 'right', 'Color', 'w')
+% 
+% plotm(-24.7, -65.3, 'ow', 'MarkerSize', 30);
+% textm(-24.7, -65.3, '   Byrgius', 'FontSize', 20, 'Color', 'w')
+% 
+% 
+% plotm(-8.9, 61.1, 'ow', 'MarkerSize', 30);
+% textm(-8.9, 61.1, 'Langrenus   ', 'FontSize', 20, 'HorizontalAlignment', 'right', 'Color', 'w')
 
 
 crameri nuuk
 cbar = colorbar('southoutside');
 
-caxis([50 110])
+caxis([50 120])
 xlabel(cbar, strcat('Median grain size, $\mu$m'),'Interpreter','latex' )
 
 % Adjust width of colorbar
