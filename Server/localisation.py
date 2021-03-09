@@ -20,8 +20,6 @@ import argparse
 from datetime import datetime
 from pyshtools import constants
 
-
-# path = "/Users/aaron/thesis/Results/"
 path = os.getcwd() + "/"
 
 # Width of image with respect to (journal) page

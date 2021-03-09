@@ -2,5 +2,5 @@ Data/
 Results/
 Figures/
 GSH/
-Server/gggrx_1200b_sha.tab
+Server/sha.grgm1200b_rm1_1e1_sigma.txt
 test.py
