@@ -13,13 +13,28 @@ from palettable import scientific as scm
 from scipy import interpolate
 from matplotlib import pyplot as plt
 
-# if not fill:
-#     dirpath = path + "result_" + "04-03-21_19-19-16/"
-#     lingrad = np.load(dirpath + "lingrad.npy")
-#     linsurf = np.load(dirpath + "linsurf.npy")
-#     dlingrad = np.load(dirpath + "dlingrad.npy")
-#     dlinsurf = np.load(dirpath + "dlinsurf.npy")
+# Width of image with respect to (journal) page
+pysh.utils.figstyle(rel_width=0.75)
 
+save_figures=True
+
+path = "/Users/aaron/thesis/Results/"
+dirpath = path + "result_" + "04-03-21_19-19-16/"
+lingrad = np.load(dirpath + "lingrad.npy")
+linsurf = np.load(dirpath + "linsurf.npy")
+dlingrad = np.load(dirpath + "dlingrad.npy")
+dlinsurf = np.load(dirpath + "dlinsurf.npy")
+
+with open(dirpath + "README.txt", "r") as f:
+    lines = f.readlines()
+    latrange=[ int(lines[4].split(' ')[-2][1:3]), int(lines[4].split(' ')[-1][0:3]) ]
+    lonrange=[ int(lines[5].split(' ')[-2][1:5]), int(lines[5].split(' ')[-1][0:3]) ]
+    fillres=int(lines[6].split(' ')[-1])
+    gridres=int(lines[7].split(' ')[-1])
+
+
+lats = np.arange(latrange[0], latrange[1]-gridres, -gridres)
+lons = np.arange(lonrange[0], lonrange[1]+gridres, gridres)
 
 def my_interpolate(array, lons, lats, method):
     
@@ -35,7 +50,21 @@ def my_interpolate(array, lons, lats, method):
                                         method=method)
     return interpolated
 
-lingrad_interpolated = my_interpolate(lingrad, longrid, latgrid, 'cubic')
+lingrad_interpolated = my_interpolate(lingrad, lons, lats, 'cubic')
+linsurf_interpolated = my_interpolate(linsurf, lons, lats, 'cubic')
+dlingrad_interpolated = my_interpolate(dlingrad, lons, lats, 'cubic')
+dlinsurf_interpolated = my_interpolate(dlinsurf, lons, lats, 'cubic')
+
+# Grain density and porosity
+longrid, latgrid = np.meshgrid(lons, lats)
+# glm = pysh.SHCoeffs.from_file('/Users/aaron/thesis/Data/moon_gravity/grain_density_310.sh')
+# grain = glm.expand(lat=latgrid, lon=longrid, lmax_calc=310, degrees=True)
+grain = np.load("/Users/aaron/thesis/Data/moon_gravity/grain_density_310.npy")
+porosity = 1 - linsurf_interpolated / grain
+
+
+#%% Plots
+
 lingrad_grid = pysh.SHGrid.from_array(lingrad_interpolated)
 fig1, ax1 = lingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                cmap=scm.diverging.Broc_20.mpl_colormap,
@@ -49,7 +78,6 @@ fig1, ax1 = lingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                show=False
                                )
     
-linsurf_interpolated = my_interpolate(linsurf, longrid, latgrid, 'cubic')
 linsurf_grid = pysh.SHGrid.from_array(linsurf_interpolated)
 fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                 cmap=scm.sequential.Bilbao_20.mpl_colormap,
@@ -63,7 +91,6 @@ fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                 show=False
                                 )
   
-dlingrad_interpolated = my_interpolate(dlingrad, longrid, latgrid, 'cubic')
 dlingrad_grid = pysh.SHGrid.from_array(dlingrad_interpolated)
 fig3, ax3 = dlingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                cmap=scm.diverging.Broc_20.mpl_colormap,
@@ -77,7 +104,6 @@ fig3, ax3 = dlingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                show=False
                                )
    
-dlinsurf_interpolated = my_interpolate(dlinsurf, longrid, latgrid, 'cubic')
 dlinsurf_grid = pysh.SHGrid.from_array(dlinsurf_interpolated)
 fig4, ax4 = dlinsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                 cmap=scm.sequential.Bilbao_20.mpl_colormap,
@@ -91,11 +117,41 @@ fig4, ax4 = dlinsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                 show=False
                                 )
 
+porosity_grid = pysh.SHGrid.from_array(porosity)
+fig5, ax5 = porosity_grid.plot(ccrs.Orthographic(central_longitude=180.),
+                               cmap=scm.sequential.Acton_20.mpl_colormap,
+                               cmap_limits = [-0.001, 0.301],
+                               colorbar='bottom',
+                               cb_label='Porosity, -',
+                               cb_tick_interval = 0.1,
+                               cb_minor_tick_interval = 0.05,
+                               cb_triangles='both',
+                               grid=True,
+                               cmap_reverse=True,
+                               show=False
+                               )
+
+# grain_density_grid = pysh.SHGrid.from_array(grain)
+# fig6, ax6 = grain_density_grid.plot(ccrs.Orthographic(central_longitude=180.),
+#                                cmap=scm.sequential.Bilbao_20.mpl_colormap,
+#                                cmap_limits = [2879, 2980],
+#                                colorbar='bottom',
+#                                cb_label='Grain density, kg/m$^3$',
+#                                cb_tick_interval = 20,
+#                                cb_minor_tick_interval = 10,
+#                                cb_triangles='both',
+#                                grid=True,
+#                                show=False
+#                                )
+
 if save_figures:
-    fig1.savefig(dirpath + "/lindensgrad.pdf", format='pdf', dpi=150)
+    fig1.savefig(dirpath + "lindensgrad.pdf", format='pdf', dpi=150)
     fig2.savefig(dirpath + "linsurfdens.pdf", format='pdf', dpi=150)
-    fig3.savefig(dirpath + "/uncertainty_lindensgrad.pdf", format='pdf', dpi=150)
+    fig3.savefig(dirpath + "uncertainty_lindensgrad.pdf", format='pdf', dpi=150)
     fig4.savefig(dirpath + "uncertainty_linsurfdens.pdf", format='pdf', dpi=150)
+    fig5.savefig(dirpath + "porosity.pdf", format='pdf', dpi=150)
+    # fig6.savefig(dirpath + "grain_density.pdf", format='pdf', dpi=150)
+    
 #%% Plot 
 
 # latmesh, lonmesh = np.meshgrid(latgrid, longrid)
