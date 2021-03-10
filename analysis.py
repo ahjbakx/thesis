@@ -18,6 +18,9 @@ pysh.utils.figstyle(rel_width=0.75)
 
 save_figures=True
 
+
+#%% Import and prepare data
+
 path = "/Users/aaron/thesis/Results/"
 dirpath = path + "result_" + "04-03-21_19-19-16/"
 lingrad = np.load(dirpath + "lingrad.npy")
@@ -62,9 +65,30 @@ longrid, latgrid = np.meshgrid(lons, lats)
 grain = np.load("/Users/aaron/thesis/Data/moon_gravity/grain_density_310.npy")
 porosity = 1 - linsurf_interpolated / grain
 
+#%% Create maria and highlands mask
 
-#%% Plots
+from cartopy.io import shapereader
+from shapely.ops import cascaded_union
+from shapely.geometry import Point
 
+path = '/Users/aaron/thesis/Data/mare_shape/'
+shape = shapereader.Reader(path + 'LROC_GLOBAL_MARE_180.shp')
+polygon = cascaded_union(list(shape.geometries()))
+
+def inpolygon(polygon, lons, lats):
+    return np.array([Point(lon, lat).intersects(polygon) for lon, lat in zip(lons, lats)],
+                    dtype=np.bool)
+
+mask = inpolygon(polygon, longrid.ravel(), latgrid.ravel())
+
+np.save(path + "mask.npy",  mask)
+
+#%% Split analysis for maria and highlands
+path = '/Users/aaron/thesis/Data/mare_shape/'
+mask = np.load(path + "mask.npy")
+
+
+#%% Maps
 lingrad_grid = pysh.SHGrid.from_array(lingrad_interpolated)
 fig1, ax1 = lingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                cmap=scm.diverging.Broc_20.mpl_colormap,
