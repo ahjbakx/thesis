@@ -75,26 +75,63 @@ path = '/Users/aaron/thesis/Data/mare_shape/'
 shape = shapereader.Reader(path + 'LROC_GLOBAL_MARE_180.shp')
 polygon = cascaded_union(list(shape.geometries()))
 
-def inpolygon(polygon, lons, lats):
-    return np.array([Point(lon, lat).intersects(polygon) for lon, lat in zip(lons, lats)],
-                    dtype=np.bool)
+#%%
+mask = np.zeros(shape=longrid.shape, dtype=bool)
 
-mask = inpolygon(polygon, longrid.ravel(), latgrid.ravel())
-
+for i in range(361):
+    lon = lons[i]
+    for j in range(181):
+        lat = lats[j]
+        print(lon, lat)
+        rand = np.random.rand()
+        if rand < 0.5:
+            mask[j,i]=True
+        else:
+            mask[j,i]=False
+        #mask[j,i] = Point(lon, lat).intersects(polygon)
+  
+# mask = inpolygon(polygon, lons, lats)
+# mask = mask.reshape(longrid.shape)
 np.save(path + "mask.npy",  mask)
 
 #%% Split analysis for maria and highlands
+from matplotlib.ticker import PercentFormatter
+
 path = '/Users/aaron/thesis/Data/mare_shape/'
-mask = np.load(path + "mask.npy")
+mask_m= np.load(path + "mask.npy")
+mask_h = np.logical_not(mask_m)
+mask_near = np.logical_and(longrid>-90, longrid<90)
 
 
+linsurf_m = linsurf_interpolated[np.logical_and(mask_m, mask_near)]
+linsurf_h = linsurf_interpolated[np.logical_and(mask_h, mask_near)]
+
+lingrad_m = lingrad_interpolated[np.logical_and(mask_m, mask_near)]
+lingrad_h = lingrad_interpolated[np.logical_and(mask_h, mask_near)]
+
+fig, ax = plt.subplots()
+nbins=50
+ax.hist(linsurf_interpolated[mask_near].ravel(), nbins, label='total', color=[0.75,0.75,0.75])
+ax.hist(linsurf_m, nbins, label='maria', color=[0.8500, 0.3250, 0.0980], alpha=0.75)
+ax.hist(linsurf_h, nbins, label='highlands', color=[0, 0.4470, 0.7410], alpha=0.75)
+ax.set(xlim=(1900,3000), ylim=(0, 3.1e3), yticklabels=[],
+       xlabel='Surface density, kg/m$^3$')
+ax.legend()
+
+fig, ax = plt.subplots()
+ax.hist(lingrad_interpolated[mask_near].ravel(), nbins, label='total', color=[0.75,0.75,0.75])
+ax.hist(lingrad_m, nbins, label='maria', color=[0.8500, 0.3250, 0.0980], alpha=0.75)
+ax.hist(lingrad_h, nbins, label='highlands', color=[0, 0.4470, 0.7410], alpha=0.75)
+
+ax.set(xlim=(-80,80), ylim=(0, 4.1e3), yticklabels=[],
+       xlabel='Density gradient, kg/m$^3$/km')
 #%% Maps
 lingrad_grid = pysh.SHGrid.from_array(lingrad_interpolated)
 fig1, ax1 = lingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                cmap=scm.diverging.Broc_20.mpl_colormap,
                                cmap_limits = [-80, 80],
                                colorbar='bottom',
-                               cb_label='Linear density gradient, kg/m$^3$/km',
+                               cb_label='Density gradient, kg/m$^3$/km',
                                cb_tick_interval = 40,
                                cb_minor_tick_interval = 20,
                                cb_triangles='both',
@@ -109,7 +146,7 @@ fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                 colorbar='bottom',
                                 cb_tick_interval = 200,
                                 cb_minor_tick_interval = 100,
-                                cb_label='Linear surface density, kg/m$^3$',
+                                cb_label='Surface density, kg/m$^3$',
                                 cb_triangles='both',
                                 grid=True,
                                 show=False
@@ -120,7 +157,7 @@ fig3, ax3 = dlingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                cmap=scm.diverging.Broc_20.mpl_colormap,
                                cmap_limits = [-0.001, 5.],
                                colorbar='bottom',
-                               cb_label='Linear density gradient, kg/m$^3$/km',
+                               cb_label='Density gradient, kg/m$^3$/km',
                                cb_tick_interval = 1,
                                cb_minor_tick_interval = 0.5,
                                cb_triangles='both',
@@ -135,7 +172,7 @@ fig4, ax4 = dlinsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                 colorbar='bottom',
                                 cb_tick_interval = 5,
                                 cb_minor_tick_interval = 2.5,
-                                cb_label='Linear surface density, kg/m$^3$',
+                                cb_label='Surface density, kg/m$^3$',
                                 cb_triangles='both',
                                 grid=True,
                                 show=False
