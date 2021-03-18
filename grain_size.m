@@ -401,6 +401,39 @@ set(gca,'position',x1)
 axis off
 set(gca, 'FontSize', 20)
 
+
+%% Rewrite data to DH2 grid
+
+numlats = 181;
+numlons = 361;
+
+lats = linspace(90, -90, 181);
+lons = linspace(-180, 180, 361);
+[lonmesh, latmesh] = meshgrid(lons, lats);
+
+albedo = zeros(size(lonmesh));
+Pmax = zeros(size(lonmesh));
+grain_size = zeros(size(lonmesh));
+
+for ilat = 21:numlats-20
+    lat = latmesh(ilat, ilon)
+    for ilon = 111:numlons-110
+        lon = lonmesh(ilat, ilon);
+
+        [g, dg, A, P, dA, dP] = get_grain_size_at_lat_lon(grain_size_self, a, da, lat, lon, albedo_630, pmax_630);
+        
+        albedo(ilat, ilon) = A;
+        Pmax(ilat, ilon) = P;
+        grain_size(ilat, ilon) = g;
+    end
+end
+
+writematrix(albedo, "albedo.txt");
+writematrix(Pmax, "Pmax.txt");
+writematrix(grain_size, "grain_size.txt");
+
+
+
 %% Functions
 
 function grain_size = get_grain_size(albedo_630, pmax_630, a)
