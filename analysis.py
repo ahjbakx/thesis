@@ -16,13 +16,11 @@ from matplotlib import pyplot as plt
 # Width of image with respect to (journal) page
 pysh.utils.figstyle(rel_width=0.75)
 
-save_figures=True
-
 
 #%% Import and prepare data
 
 path = "/Users/aaron/thesis/Results/"
-dirpath = path + "result_" + "04-03-21_19-19-16/"
+dirpath = path + "result_val-1-G19_10-03-21_02-36-51/"
 lingrad = np.load(dirpath + "lingrad.npy")
 linsurf = np.load(dirpath + "linsurf.npy")
 dlingrad = np.load(dirpath + "dlingrad.npy")
@@ -65,43 +63,83 @@ longrid, latgrid = np.meshgrid(lons, lats)
 grain = np.load("/Users/aaron/thesis/Data/moon_gravity/grain_density_310.npy")
 porosity = 1 - linsurf_interpolated / grain
 
+#%%
+
+# from netCDF4 import Dataset
+
+# validation = True
+# val_folder = "/Users/aaron/thesis/Data/localisation_validation/"
+
+# ds = Dataset(val_folder + "LIN_L250-650_TC40_rho.grd", "r", format="NETCDF4")
+
+# linsurf_G19 = np.flipud(ds['z'][:])
+# linsurf_dummy = linsurf_G19
+# temp = linsurf_dummy[:,0:180]
+# linsurf_dummy[:,0:180] = linsurf_dummy[:,181:]
+# linsurf_dummy[:,181:] = temp
+
+# dif_linsurf = linsurf_dummy - linsurf_interpolated
+
+
+# linsurf_grid = pysh.SHGrid.from_array(dif_linsurf)
+# fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
+#                                 cmap=scm.sequential.Bilbao_20.mpl_colormap,
+#                                 cmap_limits = [-200, 200],
+#                                 colorbar='bottom',
+#                                 cb_label='Surface density, kg/m$^3$',
+#                                 cb_triangles='both',
+#                                 grid=True,
+#                                 show=False
+#                                 )
+
+# linsurf_grid = pysh.SHGrid.from_array(linsurf_G19)
+# fig2, ax2 = linsurf_grid.plot(ccrs.Mollweide(central_longitude=90.),
+#                                 cmap=scm.sequential.Bilbao_20.mpl_colormap,
+#                                 cmap_limits = [1999, 2800],
+#                                 colorbar='bottom',
+#                                 cb_label='Surface density, kg/m$^3$',
+#                                 cb_triangles='both',
+#                                 grid=True,
+#                                 show=False
+#                                 )
+
 #%% Create maria and highlands mask
 
-from cartopy.io import shapereader
-from shapely.ops import cascaded_union
-from shapely.geometry import Point
+# from cartopy.io import shapereader
+# from shapely.ops import cascaded_union
+# from shapely.geometry import Point
+# import fiona
 
-path = '/Users/aaron/thesis/Data/mare_shape/'
-shape = shapereader.Reader(path + 'LROC_GLOBAL_MARE_180.shp')
-polygon = cascaded_union(list(shape.geometries()))
+# save_mask = False
+# path = '/Users/aaron/thesis/Data/mare_shape/'
+# shape = shapereader.Reader(path + 'LROC_GLOBAL_MARE_180.shp')
+# polygon = cascaded_union(list(shape.geometries()))
 
-#%%
-mask = np.zeros(shape=longrid.shape, dtype=bool)
+# mask = np.zeros(shape=longrid.shape, dtype=bool)
 
-for i in range(361):
-    lon = lons[i]
-    for j in range(181):
-        lat = lats[j]
-        print(lon, lat)
-        rand = np.random.rand()
-        if rand < 0.5:
-            mask[j,i]=True
-        else:
-            mask[j,i]=False
-        #mask[j,i] = Point(lon, lat).intersects(polygon)
+# for i in range(361):
+#     lon = lons[i]
+#     for j in range(181):
+#         lat = lats[j]
+#         within = Point(lon, lat).within(polygon)
+#         print('Longitude: ', lon, 'Latitude: ', lat, within)
+#         mask[j,i] = within
   
-# mask = inpolygon(polygon, lons, lats)
-# mask = mask.reshape(longrid.shape)
-np.save(path + "mask.npy",  mask)
+# # mask = inpolygon(polygon, lons, lats)
+# # mask = mask.reshape(longrid.shape)
+# if save_mask:
+#     np.save(path + "mask.npy",  mask)
+
 
 #%% Split analysis for maria and highlands
-from matplotlib.ticker import PercentFormatter
-
+save_figures=True
+pysh.utils.figstyle(rel_width=0.5)
 path = '/Users/aaron/thesis/Data/mare_shape/'
-mask_m= np.load(path + "mask.npy")
+# mask_m= np.load(path + "mask.npy")
+lines = np.loadtxt(path+'mask.txt', delimiter=',')
+mask_m = lines.astype(bool)
 mask_h = np.logical_not(mask_m)
-mask_near = np.logical_and(longrid>-90, longrid<90)
-
+mask_near = abs(longrid)<90
 
 linsurf_m = linsurf_interpolated[np.logical_and(mask_m, mask_near)]
 linsurf_h = linsurf_interpolated[np.logical_and(mask_h, mask_near)]
@@ -109,23 +147,182 @@ linsurf_h = linsurf_interpolated[np.logical_and(mask_h, mask_near)]
 lingrad_m = lingrad_interpolated[np.logical_and(mask_m, mask_near)]
 lingrad_h = lingrad_interpolated[np.logical_and(mask_h, mask_near)]
 
-fig, ax = plt.subplots()
+porosity_m = porosity[np.logical_and(mask_m, mask_near)]
+porosity_h = porosity[np.logical_and(mask_h, mask_near)]
+
+fig1, ax = plt.subplots()
 nbins=50
 ax.hist(linsurf_interpolated[mask_near].ravel(), nbins, label='total', color=[0.75,0.75,0.75])
-ax.hist(linsurf_m, nbins, label='maria', color=[0.8500, 0.3250, 0.0980], alpha=0.75)
 ax.hist(linsurf_h, nbins, label='highlands', color=[0, 0.4470, 0.7410], alpha=0.75)
+ax.hist(linsurf_m, nbins, label='maria', color=[0.8500, 0.3250, 0.0980], alpha=0.75)
 ax.set(xlim=(1900,3000), ylim=(0, 3.1e3), yticklabels=[],
        xlabel='Surface density, kg/m$^3$')
 ax.legend()
 
-fig, ax = plt.subplots()
+fig2, ax = plt.subplots()
 ax.hist(lingrad_interpolated[mask_near].ravel(), nbins, label='total', color=[0.75,0.75,0.75])
-ax.hist(lingrad_m, nbins, label='maria', color=[0.8500, 0.3250, 0.0980], alpha=0.75)
 ax.hist(lingrad_h, nbins, label='highlands', color=[0, 0.4470, 0.7410], alpha=0.75)
-
+ax.hist(lingrad_m, nbins, label='maria', color=[0.8500, 0.3250, 0.0980], alpha=0.75)
 ax.set(xlim=(-80,80), ylim=(0, 4.1e3), yticklabels=[],
        xlabel='Density gradient, kg/m$^3$/km')
+
+fig3, ax = plt.subplots()
+ax.hist(porosity[mask_near].ravel(), nbins, label='total', color=[0.75,0.75,0.75])
+ax.hist(porosity_h, nbins, label='highlands', color=[0, 0.4470, 0.7410], alpha=0.75)
+ax.hist(porosity_m, nbins, label='maria', color=[0.8500, 0.3250, 0.0980], alpha=0.75)
+ax.set(xlim=(0,0.3), ylim=(0, 3.5e3), yticklabels=[],
+       xlabel='Porosity, -')
+ax.legend()
+
+if save_figures:
+    fig1.savefig(dirpath + "linsurfdens-hist.png", format='png', dpi=300)
+    fig2.savefig(dirpath + "lindensgrad-hist.png", format='png', dpi=300)
+    fig3.savefig(dirpath + "porosity-hist.png", format='png', dpi=300)
+    
+    
+#%% Latitudinal dependency
+
+mask_0 = abs(latgrid)<15
+mask_15 = np.logical_and( abs(latgrid)>15, abs(latgrid)<30 )
+mask_30 = np.logical_and( abs(latgrid)>30, abs(latgrid)<50 )
+mask_50 = abs(latgrid)>50
+
+mask_0 = np.logical_and(mask_0, mask_near)
+mask_15 = np.logical_and(mask_15, mask_near)
+mask_30 = np.logical_and(mask_30, mask_near)
+mask_50 = np.logical_and(mask_50, mask_near)
+
+linsurf_0 = linsurf_interpolated[mask_0]
+linsurf_15 = linsurf_interpolated[mask_15]
+linsurf_30 = linsurf_interpolated[mask_30]
+linsurf_50 = linsurf_interpolated[mask_50]
+linsurf_m_0 = linsurf_interpolated[np.logical_and(mask_m, mask_0)]
+linsurf_m_15 = linsurf_interpolated[np.logical_and(mask_m, mask_15)]
+linsurf_m_30 = linsurf_interpolated[np.logical_and(mask_m, mask_30)]
+linsurf_m_50 = linsurf_interpolated[np.logical_and(mask_m, mask_50)]
+linsurf_h_0 = linsurf_interpolated[np.logical_and(mask_h, mask_0)]
+linsurf_h_15 = linsurf_interpolated[np.logical_and(mask_h, mask_15)]
+linsurf_h_30 = linsurf_interpolated[np.logical_and(mask_h, mask_30)]
+linsurf_h_50 = linsurf_interpolated[np.logical_and(mask_h, mask_50)]
+
+lingrad_0 = lingrad_interpolated[mask_0]
+lingrad_15 = lingrad_interpolated[mask_15]
+lingrad_30 = lingrad_interpolated[mask_30]
+lingrad_50 = lingrad_interpolated[mask_50]
+lingrad_m_0 = lingrad_interpolated[np.logical_and(mask_m, mask_0)]
+lingrad_m_15 = lingrad_interpolated[np.logical_and(mask_m, mask_15)]
+lingrad_m_30 = lingrad_interpolated[np.logical_and(mask_m, mask_30)]
+lingrad_m_50 = lingrad_interpolated[np.logical_and(mask_m, mask_50)]
+lingrad_h_0 = lingrad_interpolated[np.logical_and(mask_h, mask_0)]
+lingrad_h_15 = lingrad_interpolated[np.logical_and(mask_h, mask_15)]
+lingrad_h_30 = lingrad_interpolated[np.logical_and(mask_h, mask_30)]
+lingrad_h_50 = lingrad_interpolated[np.logical_and(mask_h, mask_50)]
+
+porosity_0 = porosity[mask_0]
+porosity_15 = porosity[mask_15]
+porosity_30 = porosity[mask_30]
+porosity_50 = porosity[mask_50]
+porosity_m_0 = porosity[np.logical_and(mask_m, mask_0)]
+porosity_m_15 = porosity[np.logical_and(mask_m, mask_15)]
+porosity_m_30 = porosity[np.logical_and(mask_m, mask_30)]
+porosity_m_50 = porosity[np.logical_and(mask_m, mask_50)]
+porosity_h_0 = porosity[np.logical_and(mask_h, mask_0)]
+porosity_h_15 = porosity[np.logical_and(mask_h, mask_15)]
+porosity_h_30 = porosity[np.logical_and(mask_h, mask_30)]
+porosity_h_50 = porosity[np.logical_and(mask_h, mask_50)]
+
+
+def boxplots(data, label, legend=False):
+
+    positions = [1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15]
+    colors = [[0.75,0.75,0.75], [0.75,0.75,0.75], [0.75,0.75,0.75], [0.75,0.75,0.75],
+              [0.8500, 0.3250, 0.0980], [0.8500, 0.3250, 0.0980], [0.8500, 0.3250, 0.0980], [0.8500, 0.3250, 0.0980],
+              [0, 0.4470, 0.7410], [0, 0.4470, 0.7410], [0, 0.4470, 0.7410], [0, 0.4470, 0.7410]]
+
+    fig, ax = plt.subplots()
+    box1=ax.boxplot(data, sym='', positions=positions)
+    ax.set(xticklabels=['', '', '', '', r'$|\beta|<15\degree$', r'$15\degree<|\beta|<30\degree$', r'$30\degree<|\beta|<50\degree$', r'$|\beta|>50\degree$', '' ,'' ,'', ''],
+           ylabel=label)
+    
+    for item in ['boxes', 'whiskers', 'fliers', 'medians', 'caps']:
+        line=0
+        skip=False
+        if item == 'whiskers' or item == 'caps':
+            for box in box1[item]:
+                plt.setp(box, color=colors[line])
+                if skip:
+                    line+=1
+                    skip=False
+                else:
+                    skip=True
+        else:
+            for box in box1[item]:
+                plt.setp(box, color=colors[line])
+                line+=1
+                
+    if legend:
+        ax.legend([box1['boxes'][0], box1['boxes'][4], box1['boxes'][8]], ['total', 'maria', 'highlands'], loc='upper right')
+    
+    return fig, ax
+
+box_linsurf = [linsurf_0, linsurf_15, linsurf_30, linsurf_50,
+                linsurf_m_0, linsurf_m_15, linsurf_m_30, linsurf_m_50,
+                linsurf_h_0, linsurf_h_15, linsurf_h_30, linsurf_h_50]
+box_lingrad = [lingrad_0, lingrad_15, lingrad_30, lingrad_50,
+                lingrad_m_0, lingrad_m_15, lingrad_m_30, lingrad_m_50,
+                lingrad_h_0, lingrad_h_15, lingrad_h_30, lingrad_h_50]
+box_porosity = [porosity_0, porosity_15, porosity_30, porosity_50,
+            porosity_m_0, porosity_m_15, porosity_m_30, porosity_m_50,
+            porosity_h_0, porosity_h_15, porosity_h_30, porosity_h_50]
+   
+fig1, ax1 = boxplots(box_linsurf, 'Surface density, kg/m$^3$', legend=True)
+fig2, ax2 = boxplots(box_lingrad, 'Density gradient, kg/m$^3$/km')
+fig3, ax3 = boxplots(box_porosity, 'Porosity, -')
+
+if save_figures:
+    fig1.savefig(dirpath + "linsurfdens-box.png", format='png', dpi=300)
+    fig2.savefig(dirpath + "lindensgrad-box.png", format='png', dpi=300)
+    fig3.savefig(dirpath + "porosity-box.png", format='png', dpi=300)
+    
+    
 #%% Maps
+import shapely
+import geopandas as gpd
+
+sf = gpd.read_file("/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp")
+# tolerance = 1.
+# geoms = sf.simplify(tolerance, preserve_topology=True)
+
+geoms = sf['geometry']
+polies = []
+for geo in geoms:
+    if type(geo) == shapely.geometry.MultiPolygon:
+        for poly in list(geo):
+            if poly.area>100:
+                polies.append(poly)
+    else:
+        if geo.area>100:
+            polies.append(geo)
+            
+# sf = shapefile.Reader("")
+pysh.utils.figstyle(rel_width=0.75)
+# save_figures=True
+
+# lingrad = xr.DataArray(lingrad_interpolated)
+
+# fig = pygmt.Figure()
+# fig.grdimage(lingrad,
+#              projection="G0/0/12c")
+# fig.show()
+# fig.savefig('hoi.pdf')
+
+# for shape in sf.shapeRecords():
+#     shape = shape.shape
+#     points = np.array(shape.points)
+#     intervals = list(shape.parts) + [len(shape.points)]
+#     for (i, j) in zip(intervals[:-1], intervals[1:]):
+#         ax1.plot(*zip(*points[i:j]), color='black', linewidth=1)
+
 lingrad_grid = pysh.SHGrid.from_array(lingrad_interpolated)
 fig1, ax1 = lingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                cmap=scm.diverging.Broc_20.mpl_colormap,
@@ -138,7 +335,7 @@ fig1, ax1 = lingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                grid=True,
                                show=False
                                )
-    
+
 linsurf_grid = pysh.SHGrid.from_array(linsurf_interpolated)
 fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                 cmap=scm.sequential.Bilbao_20.mpl_colormap,
@@ -151,6 +348,7 @@ fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                 grid=True,
                                 show=False
                                 )
+
   
 dlingrad_grid = pysh.SHGrid.from_array(dlingrad_interpolated)
 fig3, ax3 = dlingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
@@ -192,26 +390,44 @@ fig5, ax5 = porosity_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                show=False
                                )
 
-# grain_density_grid = pysh.SHGrid.from_array(grain)
-# fig6, ax6 = grain_density_grid.plot(ccrs.Orthographic(central_longitude=180.),
-#                                cmap=scm.sequential.Bilbao_20.mpl_colormap,
-#                                cmap_limits = [2879, 2980],
-#                                colorbar='bottom',
-#                                cb_label='Grain density, kg/m$^3$',
-#                                cb_tick_interval = 20,
-#                                cb_minor_tick_interval = 10,
-#                                cb_triangles='both',
-#                                grid=True,
-#                                show=False
-#                                )
+grain_density_grid = pysh.SHGrid.from_array(grain)
+fig6, ax6 = grain_density_grid.plot(ccrs.Orthographic(central_longitude=180.),
+                                cmap=scm.sequential.Bilbao_20.mpl_colormap,
+                                cmap_limits = [2879, 2980],
+                                colorbar='bottom',
+                                cb_label='Grain density, kg/m$^3$',
+                                cb_tick_interval = 20,
+                                cb_minor_tick_interval = 10,
+                                cb_triangles='both',
+                                grid=True,
+                                show=False
+                                )
+
+ax1.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
+                   linewidth=0.2, edgecolor='white', facecolor='none')
+
+ax2.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
+                   linewidth=0.2, edgecolor='white', facecolor='none')
+
+ax3.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
+                   linewidth=0.2, edgecolor='white', facecolor='none')
+
+ax4.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
+                   linewidth=0.2, edgecolor='white', facecolor='none')
+
+ax5.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
+                   linewidth=0.2, edgecolor='white', facecolor='none')
+
+ax6.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
+                   linewidth=0.2, edgecolor='white', facecolor='none')
 
 if save_figures:
-    fig1.savefig(dirpath + "lindensgrad.pdf", format='pdf', dpi=150)
-    fig2.savefig(dirpath + "linsurfdens.pdf", format='pdf', dpi=150)
-    fig3.savefig(dirpath + "uncertainty_lindensgrad.pdf", format='pdf', dpi=150)
-    fig4.savefig(dirpath + "uncertainty_linsurfdens.pdf", format='pdf', dpi=150)
-    fig5.savefig(dirpath + "porosity.pdf", format='pdf', dpi=150)
-    # fig6.savefig(dirpath + "grain_density.pdf", format='pdf', dpi=150)
+    fig1.savefig(dirpath + "lindensgrad.png", format='png', dpi=300)
+    fig2.savefig(dirpath + "linsurfdens.png", format='png', dpi=300)
+    fig3.savefig(dirpath + "uncertainty_lindensgrad.png", format='png', dpi=300)
+    fig4.savefig(dirpath + "uncertainty_linsurfdens.png", format='png', dpi=300)
+    fig5.savefig(dirpath + "porosity.png", format='png', dpi=300)
+    fig6.savefig(dirpath + "grain_density.png", format='png', dpi=300)
     
 #%% Plot 
 

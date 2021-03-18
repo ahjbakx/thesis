@@ -2,8 +2,13 @@ clear all; close all; clc;
 
 roi = shaperead('mare_shape/LROC_GLOBAL_MARE_180.shp');
 
-latitude = fitsread("polarisation_data/latitude.fits");
-longitude = fitsread("polarisation_data/longitude.fits");
+% latitude = fitsread("polarisation_data/latitude.fits");
+% longitude = fitsread("polarisation_data/longitude.fits");
+
+latitude = linspace(90, -90, 181);
+longitude = linspace(-180, 180, 361);
+
+[longitude, latitude] = meshgrid(longitude, latitude);
 
 maria_mask = zeros(size(latitude),'logical');
 for i = 1:length(roi)
@@ -14,5 +19,6 @@ for i = 1:length(roi)
     maria_mask = maria_mask | mask_temp;
 end
 
-% CHECK
-save('bin/maria_mask.mat', 'maria_mask')
+% % CHECK
+% save('maria_mask2.txt', 'maria_mask')
+csvwrite('mask.txt',maria_mask)
