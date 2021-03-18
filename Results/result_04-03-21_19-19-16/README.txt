@@ -1,9 +1,0 @@
-lmin = 250
-lmax = 650
-lwin = 58
-caprad = 15.0
-latrange = [90, -90]
-lonrange = [-180, 180]
-fillres = 10
-gridres = 1
-comments = linear
