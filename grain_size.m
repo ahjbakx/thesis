@@ -416,8 +416,8 @@ Pmax = zeros(size(lonmesh));
 grain_size = zeros(size(lonmesh));
 
 for ilat = 21:numlats-20
-    lat = latmesh(ilat, ilon)
     for ilon = 111:numlons-110
+        lat = latmesh(ilat, ilon)
         lon = lonmesh(ilat, ilon);
 
         [g, dg, A, P, dA, dP] = get_grain_size_at_lat_lon(grain_size_self, a, da, lat, lon, albedo_630, pmax_630);
@@ -428,9 +428,9 @@ for ilat = 21:numlats-20
     end
 end
 
-writematrix(albedo, "albedo.txt");
-writematrix(Pmax, "Pmax.txt");
-writematrix(grain_size, "grain_size.txt");
+% writematrix(albedo, "albedo.txt");
+% writematrix(Pmax, "Pmax.txt");
+% writematrix(grain_size, "grain_size.txt");
 
 
 
