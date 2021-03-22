@@ -19,8 +19,10 @@ pysh.utils.figstyle(rel_width=0.75)
 
 #%% Import and prepare data
 
+folder = "result_robust7_22-03-21_05-31-53"
+
 path = "/Users/aaron/thesis/Results/"
-dirpath = path + "result_val-1-G19_10-03-21_02-36-51/"
+dirpath = path + folder + "/"
 lingrad = np.load(dirpath + "lingrad.npy")
 linsurf = np.load(dirpath + "linsurf.npy")
 dlingrad = np.load(dirpath + "dlingrad.npy")
@@ -132,7 +134,7 @@ porosity = 1 - linsurf_interpolated / grain
 
 
 #%% Split analysis for maria and highlands
-save_figures=True
+save_figures=False
 pysh.utils.figstyle(rel_width=0.5)
 path = '/Users/aaron/thesis/Data/mare_shape/'
 # mask_m= np.load(path + "mask.npy")
@@ -150,35 +152,42 @@ lingrad_h = lingrad_interpolated[np.logical_and(mask_h, mask_near)]
 porosity_m = porosity[np.logical_and(mask_m, mask_near)]
 porosity_h = porosity[np.logical_and(mask_h, mask_near)]
 
+graindens_m = grain[np.logical_and(mask_m, mask_near)]
+graindens_h = grain[np.logical_and(mask_h, mask_near)]
+
 fig1, ax = plt.subplots()
 nbins=50
 ax.hist(linsurf_interpolated[mask_near].ravel(), nbins, label='total', color=[0.75,0.75,0.75])
 ax.hist(linsurf_h, nbins, label='highlands', color=[0, 0.4470, 0.7410], alpha=0.75)
 ax.hist(linsurf_m, nbins, label='maria', color=[0.8500, 0.3250, 0.0980], alpha=0.75)
-ax.set(xlim=(1900,3000), ylim=(0, 3.1e3), yticklabels=[],
-       xlabel='Surface density, kg/m$^3$')
+ax.set(xlim=(1000,4000), yticklabels=[], xlabel='Surface density, kg/m$^3$')
 ax.legend()
 
 fig2, ax = plt.subplots()
 ax.hist(lingrad_interpolated[mask_near].ravel(), nbins, label='total', color=[0.75,0.75,0.75])
 ax.hist(lingrad_h, nbins, label='highlands', color=[0, 0.4470, 0.7410], alpha=0.75)
 ax.hist(lingrad_m, nbins, label='maria', color=[0.8500, 0.3250, 0.0980], alpha=0.75)
-ax.set(xlim=(-80,80), ylim=(0, 4.1e3), yticklabels=[],
-       xlabel='Density gradient, kg/m$^3$/km')
+ax.set(xlim=(-200,200), yticklabels=[], xlabel='Density gradient, kg/m$^3$/km')
 
 fig3, ax = plt.subplots()
 ax.hist(porosity[mask_near].ravel(), nbins, label='total', color=[0.75,0.75,0.75])
 ax.hist(porosity_h, nbins, label='highlands', color=[0, 0.4470, 0.7410], alpha=0.75)
 ax.hist(porosity_m, nbins, label='maria', color=[0.8500, 0.3250, 0.0980], alpha=0.75)
-ax.set(xlim=(0,0.3), ylim=(0, 3.5e3), yticklabels=[],
-       xlabel='Porosity, -')
+ax.set(yticklabels=[], xlabel='Porosity, -')
 ax.legend()
+
+# fig4, ax = plt.subplots()
+# ax.hist(grain[mask_near].ravel(), nbins, label='total', color=[0.75,0.75,0.75])
+# ax.hist(graindens_h, nbins, label='highlands', color=[0, 0.4470, 0.7410], alpha=0.75)
+# ax.hist(graindens_m, nbins, label='maria', color=[0.8500, 0.3250, 0.0980], alpha=0.75)
+# ax.set(yticklabels=[], xlabel='Grain density, kg/m$^3$')
+# ax.legend()
 
 if save_figures:
     fig1.savefig(dirpath + "linsurfdens-hist.png", format='png', dpi=300)
     fig2.savefig(dirpath + "lindensgrad-hist.png", format='png', dpi=300)
     fig3.savefig(dirpath + "porosity-hist.png", format='png', dpi=300)
-    
+    # fig4.savefig(dirpath + "graindens-hist.png", format='png', dpi=300)
     
 #%% Latitudinal dependency
 
@@ -306,7 +315,7 @@ for geo in geoms:
             
 # sf = shapefile.Reader("")
 pysh.utils.figstyle(rel_width=0.75)
-# save_figures=True
+save_figures=True
 
 # lingrad = xr.DataArray(lingrad_interpolated)
 
@@ -339,10 +348,10 @@ fig1, ax1 = lingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
 linsurf_grid = pysh.SHGrid.from_array(linsurf_interpolated)
 fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                 cmap=scm.sequential.Bilbao_20.mpl_colormap,
-                                cmap_limits = [1999, 2800],
+                                cmap_limits = [1799, 3000],
                                 colorbar='bottom',
-                                cb_tick_interval = 200,
-                                cb_minor_tick_interval = 100,
+                                cb_tick_interval = 300,
+                                cb_minor_tick_interval = 150,
                                 cb_label='Surface density, kg/m$^3$',
                                 cb_triangles='both',
                                 grid=True,
@@ -350,31 +359,31 @@ fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                 )
 
   
-dlingrad_grid = pysh.SHGrid.from_array(dlingrad_interpolated)
-fig3, ax3 = dlingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
-                               cmap=scm.diverging.Broc_20.mpl_colormap,
-                               cmap_limits = [-0.001, 5.],
-                               colorbar='bottom',
-                               cb_label='Density gradient, kg/m$^3$/km',
-                               cb_tick_interval = 1,
-                               cb_minor_tick_interval = 0.5,
-                               cb_triangles='both',
-                               grid=True,
-                               show=False
-                               )
+# dlingrad_grid = pysh.SHGrid.from_array(dlingrad_interpolated)
+# fig3, ax3 = dlingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),
+#                                cmap=scm.diverging.Broc_20.mpl_colormap,
+#                                cmap_limits = [-0.001, 5.],
+#                                colorbar='bottom',
+#                                cb_label='Density gradient, kg/m$^3$/km',
+#                                cb_tick_interval = 1,
+#                                cb_minor_tick_interval = 0.5,
+#                                cb_triangles='both',
+#                                grid=True,
+#                                show=False
+#                                )
    
-dlinsurf_grid = pysh.SHGrid.from_array(dlinsurf_interpolated)
-fig4, ax4 = dlinsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
-                                cmap=scm.sequential.Bilbao_20.mpl_colormap,
-                                cmap_limits = [-0.001, 20.],
-                                colorbar='bottom',
-                                cb_tick_interval = 5,
-                                cb_minor_tick_interval = 2.5,
-                                cb_label='Surface density, kg/m$^3$',
-                                cb_triangles='both',
-                                grid=True,
-                                show=False
-                                )
+# dlinsurf_grid = pysh.SHGrid.from_array(dlinsurf_interpolated)
+# fig4, ax4 = dlinsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
+#                                 cmap=scm.sequential.Bilbao_20.mpl_colormap,
+#                                 cmap_limits = [-0.001, 20.],
+#                                 colorbar='bottom',
+#                                 cb_tick_interval = 5,
+#                                 cb_minor_tick_interval = 2.5,
+#                                 cb_label='Surface density, kg/m$^3$',
+#                                 cb_triangles='both',
+#                                 grid=True,
+#                                 show=False
+#                                 )
 
 porosity_grid = pysh.SHGrid.from_array(porosity)
 fig5, ax5 = porosity_grid.plot(ccrs.Orthographic(central_longitude=180.),
@@ -390,18 +399,18 @@ fig5, ax5 = porosity_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                show=False
                                )
 
-grain_density_grid = pysh.SHGrid.from_array(grain)
-fig6, ax6 = grain_density_grid.plot(ccrs.Orthographic(central_longitude=180.),
-                                cmap=scm.sequential.Bilbao_20.mpl_colormap,
-                                cmap_limits = [2879, 2980],
-                                colorbar='bottom',
-                                cb_label='Grain density, kg/m$^3$',
-                                cb_tick_interval = 20,
-                                cb_minor_tick_interval = 10,
-                                cb_triangles='both',
-                                grid=True,
-                                show=False
-                                )
+# grain_density_grid = pysh.SHGrid.from_array(grain)
+# fig6, ax6 = grain_density_grid.plot(ccrs.Orthographic(central_longitude=180.),
+#                                 cmap=scm.sequential.Bilbao_20.mpl_colormap,
+#                                 cmap_limits = [2879, 2980],
+#                                 colorbar='bottom',
+#                                 cb_label='Grain density, kg/m$^3$',
+#                                 cb_tick_interval = 20,
+#                                 cb_minor_tick_interval = 10,
+#                                 cb_triangles='both',
+#                                 grid=True,
+#                                 show=False
+#                                 )
 
 ax1.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
                    linewidth=0.2, edgecolor='white', facecolor='none')
@@ -409,25 +418,25 @@ ax1.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
 ax2.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
                    linewidth=0.2, edgecolor='white', facecolor='none')
 
-ax3.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
-                   linewidth=0.2, edgecolor='white', facecolor='none')
+# ax3.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
+#                    linewidth=0.2, edgecolor='white', facecolor='none')
 
-ax4.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
-                   linewidth=0.2, edgecolor='white', facecolor='none')
+# ax4.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
+#                    linewidth=0.2, edgecolor='white', facecolor='none')
 
 ax5.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
                    linewidth=0.2, edgecolor='white', facecolor='none')
 
-ax6.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
-                   linewidth=0.2, edgecolor='white', facecolor='none')
+# ax6.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
+#                    linewidth=0.2, edgecolor='white', facecolor='none')
 
 if save_figures:
     fig1.savefig(dirpath + "lindensgrad.png", format='png', dpi=300)
     fig2.savefig(dirpath + "linsurfdens.png", format='png', dpi=300)
-    fig3.savefig(dirpath + "uncertainty_lindensgrad.png", format='png', dpi=300)
-    fig4.savefig(dirpath + "uncertainty_linsurfdens.png", format='png', dpi=300)
-    fig5.savefig(dirpath + "porosity.png", format='png', dpi=300)
-    fig6.savefig(dirpath + "grain_density.png", format='png', dpi=300)
+    # fig3.savefig(dirpath + "uncertainty_lindensgrad.png", format='png', dpi=300)
+    # fig4.savefig(dirpath + "uncertainty_linsurfdens.png", format='png', dpi=300)
+    # fig5.savefig(dirpath + "porosity.png", format='png', dpi=300)
+    # fig6.savefig(dirpath + "grain_density.png", format='png', dpi=300)
     
 #%% Plot 
 
