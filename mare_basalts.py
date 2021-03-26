@@ -92,7 +92,9 @@ for lat in latgrid:
 #np.save("/Users/aaron/thesis/Data/mare_basalts/basalt-thickness", basalt_thickness)
 
 #%% Plot map
-pysh.utils.figstyle(rel_width=0.5)
+basalt_thickness = np.load('/Users/aaron/thesis/Data/mare_basalts/basalt-thickness.npy')
+
+pysh.utils.figstyle(rel_width=0.75)
 
 basalt_thickness_grid=pysh.SHGrid.from_array(basalt_thickness/1000)
 
@@ -122,5 +124,5 @@ fig2, ax2 = basalt_thickness_grid.plot(projection=ccrs.Orthographic(central_long
 ax2.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
                     linewidth=0.1, edgecolor='black', facecolor='none')
 
-#fig2.savefig("/Users/aaron/thesis/Figures/WP4/basalt-thickness.png", format='png', dpi=300)
+fig2.savefig("/Users/aaron/thesis/Figures/WP4/basalt-thickness.png", format='png', dpi=300)
     

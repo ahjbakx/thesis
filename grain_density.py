@@ -10,8 +10,8 @@ from palettable import scientific as scm
 import numpy as np
 from scipy import interpolate
 
-pysh.utils.figstyle(rel_width=0.5)
-save_figures = False
+pysh.utils.figstyle(rel_width=0.75)
+save_figures = True
 
 # glm = pysh.SHCoeffs.from_file('/Users/aaron/thesis/Data/moon_gravity/grain_density_310.sh')
 # data = np.genfromtxt('/Users/aaron/thesis/Data/moon_gravity/grain_density_310.dat',
@@ -52,9 +52,6 @@ for px in range(len(min_lats)):
 
     grain_density[np.int((max_lat_index+min_lat_index+1)/2), np.int((min_lon_index+max_lon_index+1)/2)] = gdens
     
-
-#%% plot map
-
 array = np.ma.masked_invalid( grain_density )
 xx, yy = np.meshgrid(longrid, latgrid)
 #get only the valid values
@@ -65,6 +62,11 @@ grain_density = interpolate.griddata((x1, y1),
                                     newarr.ravel(),
                                     (xx, yy),
                                     method='cubic')
+
+# np.save("/Users/aaron/thesis/Data/moon_gravity/grain_density_310", grain_density)
+
+#%% plot map
+
 
 import shapely
 import geopandas as gpd
@@ -111,7 +113,6 @@ ax2.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
                     linewidth=0.2, edgecolor='white', facecolor='none')
 
 
-# if save_figures:
-#     fig1.savefig("/Users/aaron/thesis/Figures/WP4/global-grain-density.pdf", format='pdf', dpi=150)
-#     fig2.savefig("/Users/aaron/thesis/Figures/WP4/nearside-grain-density.png", format='png', dpi=300)
+if save_figures:
+    fig2.savefig("/Users/aaron/thesis/Figures/WP4/grain_density.png", format='png', dpi=300)
     
