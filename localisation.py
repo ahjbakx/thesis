@@ -20,12 +20,7 @@ import argparse
 from datetime import datetime
 from pyshtools import constants
 
-
-# path = "/Users/aaron/thesis/Results/"
 path = os.getcwd() + "/"
-
-# Width of image with respect to (journal) page
-pysh.utils.figstyle(rel_width=0.75)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--lwin", type=int, required=True)
@@ -60,7 +55,6 @@ lmin = 250
 lmax = 650
 lwin = args.lwin
 
-
 # clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
 """ Import GRAIL GRGM1200B RM1 10 model """
 clm = pysh.SHGravCoeffs.from_file(path + 'sha.grgm1200b_rm1_1e1_sigma.txt',
@@ -76,6 +70,8 @@ clm.set_omega(constants.Moon.omega.value)
 spectrum = clm.spectrum(function='total', lmax=lmax+lwin)
 degrees = np.arange(lmax+lwin+1)
 
+R = clm.r0/1000
+
 bc = pysh.SHGravCoeffs.from_shape(hlm, rho=1., gm=clm.gm, lmax=lmax+lwin)
 bc = bc.change_ref(r0=clm.r0)
 
@@ -84,16 +80,16 @@ gobs = pysh.SHCoeffs.from_array(clm.coeffs)
 
 global_eff_dens = gobs.admittance(ghat)
 
+basalt_thickness = np.load(path + 'basalt-thickness.npy')
+
 #%% Localised Spectral Analysis: Multitaper Spherical Cap Approach
 
 """ Define spherical cap radius and concentration threshold """
 caprad = args.caprad
 concentration_threshold = 0.99
-fill = True
-save_figures= False
 
 """ Additional comments to README file """
-comments = "linear"
+comments = "linear + mare models"
 
 start_time = time.time()
 
@@ -116,8 +112,10 @@ longrid = np.arange(lonrange[0], lonrange[1]+gridres, gridres)
 """ Construct matrices to be filled """
 lingrad = make_empty_matrix(latrange, lonrange, gridres) # linear density gradient
 linsurf = make_empty_matrix(latrange, lonrange, gridres) # linear surface density
+lincrust = make_empty_matrix(latrange, lonrange, gridres) # upper crustal density
 dlingrad = make_empty_matrix(latrange, lonrange, gridres) # uncertainty linear gradient
 dlinsurf = make_empty_matrix(latrange, lonrange, gridres) # uncertainty surface density
+dlincrust = make_empty_matrix(latrange, lonrange, gridres) # uncertainty upper crustal density
 
 print("Localisation...")
 """ Fill first with dummy data """
@@ -131,81 +129,110 @@ for lat in latdummies:
         dlingrad[lat, lon] = 5*np.random.rand()
         dlinsurf[lat, lon] = 20*np.random.rand()
         
-if fill:
+""" Construct latlon **indices** of fill grid w.r.t. fine grid """
+latfills = np.arange(-90, 90+1, fillres)
+lonfills = np.arange(-90, 90+1, fillres)
 
-    """ Construct latlon **indices** of fill grid w.r.t. fine grid """
-    latfills = np.arange(-90, 90+1, fillres)
-    lonfills = np.arange(-90, 90+1, fillres)
-    
-    """ Fill nearside with actual data """
-    for l in range_with_status(len(latfills)):
-        lat = latfills[l]
-        for lon in lonfills:
-            
-            clat_index = np.where(np.isclose(latgrid, lat))[0][0]
-            clon_index = np.where(np.isclose(longrid, lon))[0][0]
-            
-            clat = np.float( latgrid[clat_index] )
-            clon = np.float( longrid[clon_index] )
-            
-            # print('Latitude = ', clat, 'Longitude = ', clon)
-            
-            # Dummy data
-            # lingrad[clat_index, clon_index] = 10*np.random.rand()
-            # linsurf[clat_index, clon_index] = 10*np.random.rand()
-            # dlingrad[clat_index, clon_index] = 10*np.random.rand()
-            # dlinsurf[clat_index, clon_index] = 10*np.random.rand()
-            # continue
+""" Fill nearside with actual data """
+for l in range_with_status(len(latfills)):
+    lat = latfills[l]
+    for lon in lonfills:
+        clat_index = np.where(np.isclose(latgrid, lat))[0][0]
+        clon_index = np.where(np.isclose(longrid, lon))[0][0]
         
-            """ Construct spherical caps with certain radius and bandwith """
-            capwin = pysh.SHWindow.from_cap(theta=caprad, lwin=lwin)
-            
-            """ Use the best caps above a concentration threshold """
-            k = capwin.number_concentrated(concentration_threshold)
-            #print('Number of best spherical caps: ', k)
-        
-            """ Rotate best spherical caps to lonlat of interest """
-            capwin.rotate(clat=clat, clon=clon, nwinrot=k)
-            
-            """ Determine multitaper (local) spectrum of Bouguer correction """
-            mts_bc, mt_bc_sd = capwin.multitaper_spectrum(ghat, k,
-                                                                clat=clat,
-                                                                clon=clon)
-            
-            """ Determine multitaper (local) cross spectrum of gravity and Bouguer correction """
-            mtxs_topograv, mt_topograv_sd = capwin.multitaper_cross_spectrum(ghat, gobs, k,
-                                                                clat=clat,
-                                                                clon=clon)
-            
-            """ Calculate local effective density """
-            local_eff_dens = mtxs_topograv / mts_bc
+        clat = np.float( latgrid[clat_index] )
+        clon = np.float( longrid[clon_index] )
     
-            """ Least squares fit of local spectrum """
-            k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1))/(clm.r0/1000)
-            x = 1/k
+        """ Construct spherical caps with certain radius and bandwith """
+        capwin = pysh.SHWindow.from_cap(theta=caprad, lwin=lwin)
+        
+        """ Use the best caps above a concentration threshold """
+        num = capwin.number_concentrated(concentration_threshold)
+        #print('Number of best spherical caps: ', num)
+    
+        """ Rotate best spherical caps to lonlat of interest """
+        capwin.rotate(clat=clat, clon=clon, nwinrot=num)
+        
+        """ Determine multitaper (local) spectrum of Bouguer correction """
+        mts_bc, mt_bc_sd = capwin.multitaper_spectrum(ghat, num,
+                                                            clat=clat,
+                                                            clon=clon)
+        
+        """ Determine multitaper (local) cross spectrum of gravity and Bouguer correction """
+        mtxs_topograv, mt_topograv_sd = capwin.multitaper_cross_spectrum(ghat, gobs, num,
+                                                            clat=clat,
+                                                            clon=clon)
+        
+        """ Calculate local effective density """
+        local_eff_dens = mtxs_topograv / mts_bc
+
+        """ Read basalt thickness """
+        Tb = basalt_thickness[clat_index, clon_index]/1000
+        
+        """ Least squares fit of local spectrum """
+        if Tb == 0:
+            """ Linear model """
             y = local_eff_dens[lmin:lmax+1]
-            
+            k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1)) / R
+            x = 1/k
+
             H = np.ones((len(x), 2));
             for i in range(len(x)):
                 H[i,0] = x[i]
-            
+      
             xhat = np.matmul(np.matmul(np.linalg.inv(np.matmul(np.transpose(H),H)), np.transpose(H)),y)
             yhat = np.matmul(H, xhat)
             
             Px = np.linalg.inv( 1/np.cov(y)*np.matmul(np.transpose(H), H) )
-            
+        
             """ Add data to grid """
             lingrad[clat_index, clon_index] = xhat[0]
             linsurf[clat_index, clon_index] = xhat[1]
+            lincrust[clat_index, clon_index] = xhat[1]
             dlingrad[clat_index, clon_index] = np.sqrt(Px[0,0])
             dlinsurf[clat_index, clon_index] = np.sqrt(Px[1,1])
+            dlincrust[clat_index, clon_index] = 0
+     
+        else:
+            """ Two-layered Mare model """
+            a = 21
+            rho_0 = 2390
             
-            # print('Initial guess:\n', 'a=', xhat[0], '+-', np.sqrt(Px[0,0]), '\n', 
-            #       'rho=', xhat[1], '+-', np.sqrt(Px[1,1]), '\n',
-            #       'effective density +- is', np.sqrt(Px[0,0] + Px[1,1]))
+            N = 1000 # amount of infinitesimal layers
+            rN = 20 # depth of analysis
+
+            r_0 = R - Tb # spherical radius of upper crustal layer
+            r_n = np.linspace(r_0, r_0 - rN, N) # spherical radii of crustal layers
             
-            # eff_dens_th = xhat[1] + xhat[0]/k
-        
+            rhosum = 0
+            for n in range(N):
+                if n == 0:
+                    term = 0
+                elif n == 1:
+                    term = a * ( r_0 - r_n[n] ) * ( r_n[n] / R ) ** ( degrees[lmin:lmax+1] + 2 )
+                else:
+                    term = a * ( r_n[ n-1 ] - r_n[ n ] )  * ( r_n[n] / R ) ** ( degrees[lmin:lmax+1] + 2 )
+                    
+                rhosum += term
+                    
+            y = local_eff_dens[lmin:lmax+1] - rhosum - rho_0 * ( r_0 / R ) ** ( degrees[lmin:lmax+1]+ 2 )
+            
+            x = (r_0 / R) ** ( degrees[lmin:lmax+1] + 2 )
+            H = np.ones((len(x), 1));
+            for i in range(len(x)):
+                H[i,0] = 1 - x[i]
+      
+            xhat = np.matmul(np.matmul(np.linalg.inv(np.matmul(np.transpose(H),H)), np.transpose(H)),y)
+            yhat = np.matmul(H, xhat)
+                            
+            """ Add data to grid """
+            lingrad[clat_index, clon_index] = a
+            linsurf[clat_index, clon_index] = xhat[0]
+            lincrust[clat_index, clon_index] = xhat[1] + xhat[0]
+            dlingrad[clat_index, clon_index] = 0
+            dlinsurf[clat_index, clon_index] = np.sqrt( Px[0,0] )
+            dlincrust[clat_index, clon_index] = np.sqrt( Px[0,0] + Px[1,1] )
+    
 print("Finished: " + args.savename + "! Runtime: ", round((time.time() - start_time)/60,2), "minutes" )
 
 """ Save arrays to files """
@@ -226,8 +253,10 @@ try:
     """ Save arrays """
     np.save(dirpath + "lingrad", lingrad)
     np.save(dirpath + "linsurf", linsurf)
+    np.save(dirpath + "lincrust", lincrust)
     np.save(dirpath + "dlingrad", dlingrad)
     np.save(dirpath + "dlinsurf", dlinsurf)
+    np.save(dirpath + "dlincrust", dlincrust)
     
 except OSError:
     print ("Creation of the directory %s failed" % dirpath)   
