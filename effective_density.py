@@ -21,7 +21,7 @@ lmin=0
 lmax=1200
 
 # clm = pysh.datasets.Moon.GRGM1200B_RM1_1E0(lmax=lmax)
-clm = pysh.SHGravCoeffs.from_file('/Users/aaron/thesis/Data/moon_gravity/sha.grgm1200b_rm1_1e1_sigma.txt',
+clm = pysh.SHGravCoeffs.from_file('/Users/aaron/thesis/sha.grgm1200b_rm1_1e1_sigma.txt',
                                   r0_index=1,
                                   gm_index=0,
                                   errors=True)
@@ -99,20 +99,156 @@ plt.ylabel('Linear surface density, kg/m^3')
 
 
 
+#%% Theoretical effective density spectra
 
+lmin = 250
+lmax = 650
+lwin = 58
+degrees = np.arange(lmax+lwin+1)
+
+R = clm.r0/1000 #todo: read from topography
+rho_b = 2963
+Tb = 0.3
+rho_0 = 2390
+a = 21
+
+N = 1000
+rN = 15
+
+
+
+def rho_eff(degrees, R, N, rN, rho_0, a, rho_b, Tb ):
+    
+    r_0 = R - Tb
+    r_n = np.linspace(r_0, r_0 - rN, N)
+    rho_n = rho_0 + a * ( R-r_n )
+    
+    rhosum = 0
+    for n in range(N):
+        if n == 0:
+            term = 0
+        elif n == 1:
+            term = ( rho_n[n] - rho_0 ) * ( r_n[n] / R ) ** ( degrees + 2 )
+        else:
+            term = ( rho_n[n] - rho_n[ n-1 ] )  * ( r_n[n] / R ) ** ( degrees + 2 )
+            
+        rhosum += term
+            
+    rho_eff = rho_b + (rho_0 - rho_b ) * ( r_0 / R) ** (degrees + 2) + rhosum
+    
+    return rho_eff
+
+
+# rho_eff_test = rho_eff(degrees, R, N, rN, rho_0, a, rho_b, Tb)
+
+ctud=[0,0.65,0.84]
+
+fig1, ax1 = plt.subplots()
+
+rho_eff_Tb0 = rho_eff(degrees, R, N, rN, rho_0, a, rho_b, 0)
+ax1.plot(degrees[lmin:lmax+1], rho_eff_Tb0[lmin:lmax+1], label='$T_b$ = 0 km', linewidth=1)
+
+rho_eff_Tb03 = rho_eff(degrees, R, N, rN, rho_0, a, rho_b, 0.3)
+ax1.plot(degrees[lmin:lmax+1], rho_eff_Tb03[lmin:lmax+1], label='$T_b$ = 0.3 km', linewidth=1)
+
+rho_eff_Tb08 = rho_eff(degrees, R, N, rN, rho_0, a, rho_b, 0.8)
+ax1.plot(degrees[lmin:lmax+1], rho_eff_Tb08[lmin:lmax+1], label='$T_b$ = 0.8 km', linewidth=1)
+
+rho_eff_Tb16 = rho_eff(degrees, R, N, rN, rho_0, a, rho_b, 1.6)
+ax1.plot(degrees[lmin:lmax+1], rho_eff_Tb16[lmin:lmax+1], label='$T_b$ = 1.6 km', linewidth=1)
+
+ax1.set_ylabel('Effective density, kg/m$^3$')
+ax1.set_xlabel('Spherical harmonic degree')
+ax1.grid()
+# ax.set_ylim(2350, 2600)
+ax1.set_xlim(lmin, lmax)
+ax1.legend(loc='upper left')
+
+
+fig2, ax2 = plt.subplots()
+
+rho_eff_rhob2800 = rho_eff(degrees, R, N, rN, rho_0, a, 2800, Tb)
+ax2.plot(degrees[lmin:lmax+1], rho_eff_rhob2800[lmin:lmax+1], label=r'$\rho_b$ = 2800 kg/m$^3$', linewidth=1)
+
+rho_eff_rhob3000 = rho_eff(degrees, R, N, rN, rho_0, a, 3000, Tb)
+ax2.plot(degrees[lmin:lmax+1], rho_eff_rhob3000[lmin:lmax+1], label=r'$\rho_b$ = 3000 kg/m$^3$', linewidth=1)
+
+rho_eff_rhob3200 = rho_eff(degrees, R, N, rN, rho_0, a, 3200, Tb)
+ax2.plot(degrees[lmin:lmax+1], rho_eff_rhob3200[lmin:lmax+1], label=r'$\rho_b$ = 3200 kg/m$^3$', linewidth=1)
+
+rho_eff_rhob3400 = rho_eff(degrees, R, N, rN, rho_0, a, 3400, Tb)
+ax2.plot(degrees[lmin:lmax+1], rho_eff_rhob3400[lmin:lmax+1], label=r'$\rho_b$ = 3400 kg/m$^3$', linewidth=1)
+
+ax2.set_ylabel('Effective density, kg/m$^3$')
+ax2.set_xlabel('Spherical harmonic degree')
+ax2.grid()
+# ax.set_ylim(2350, 2600)
+ax2.set_xlim(lmin, lmax)
+ax2.legend(loc='lower left')
+
+
+fig3, ax3 = plt.subplots()
+
+rho_eff_rho02200 = rho_eff(degrees, R, N, rN, 2200, a, rho_b, Tb)
+ax3.plot(degrees[lmin:lmax+1], rho_eff_rho02200[lmin:lmax+1], label=r'$\rho_0$ = 2200 kg/m$^3$', linewidth=1)
+
+rho_eff_rho02400 = rho_eff(degrees, R, N, rN, 2400, a, rho_b, Tb)
+ax3.plot(degrees[lmin:lmax+1], rho_eff_rho02400[lmin:lmax+1], label=r'$\rho_0$ = 2400 kg/m$^3$', linewidth=1)
+
+rho_eff_rho02600 = rho_eff(degrees, R, N, rN, 2600, a, rho_b, Tb)
+ax3.plot(degrees[lmin:lmax+1], rho_eff_rho02600[lmin:lmax+1], label=r'$\rho_0$ = 2600 kg/m$^3$', linewidth=1)
+
+rho_eff_rho02800 = rho_eff(degrees, R, N, rN, 2800, a, rho_b, Tb)
+ax3.plot(degrees[lmin:lmax+1], rho_eff_rho02800[lmin:lmax+1], label=r'$\rho_0$ = 2800 kg/m$^3$', linewidth=1)
+
+
+ax3.set_ylabel('Effective density, kg/m$^3$')
+ax3.set_xlabel('Spherical harmonic degree')
+ax3.grid()
+# ax.set_ylim(2350, 2600)
+ax3.set_xlim(lmin, lmax)
+ax3.legend(loc='lower left')
+
+
+fig4, ax4 = plt.subplots()
+
+rho_eff_amin20 = rho_eff(degrees, R, N, rN, rho_0, -20, rho_b, Tb)
+ax4.plot(degrees[lmin:lmax+1], rho_eff_amin20[lmin:lmax+1], label='$a$ = -20 kg/m$^3$/km', linewidth=1)
+
+rho_eff_a0 = rho_eff(degrees, R, N, rN, rho_0, 0, rho_b, Tb)
+ax4.plot(degrees[lmin:lmax+1], rho_eff_a0[lmin:lmax+1], label='$a$ = 0 kg/m$^3$/km', linewidth=1)
+
+rho_eff_a20 = rho_eff(degrees, R, N, rN, rho_0, 20, rho_b, Tb)
+ax4.plot(degrees[lmin:lmax+1], rho_eff_a20[lmin:lmax+1], label='$a$ = 20 kg/m$^3$/km', linewidth=1)
+
+rho_eff_a40 = rho_eff(degrees, R, N, rN, rho_0, 40, rho_b, Tb)
+ax4.plot(degrees[lmin:lmax+1], rho_eff_a40[lmin:lmax+1], label='$a$ = 40 kg/m$^3$/km', linewidth=1)
+
+
+ax4.set_ylabel('Effective density, kg/m$^3$')
+ax4.set_xlabel('Spherical harmonic degree')
+ax4.grid()
+# ax.set_ylim(2350, 2600)
+ax4.set_xlim(lmin, lmax)
+ax4.legend(loc='upper right')
+
+# fig1.savefig("/Users/aaron/thesis/Figures/WP4/maria-model-Tb.png", format='png', dpi=300)
+# fig2.savefig("/Users/aaron/thesis/Figures/WP4/maria-model-rhob.png", format='png', dpi=300)
+# fig3.savefig("/Users/aaron/thesis/Figures/WP4/maria-model-rho0.png", format='png', dpi=300)
+# fig4.savefig("/Users/aaron/thesis/Figures/WP4/maria-model-a.png", format='png', dpi=300)
 
 #%% Plots
 ctud=[0,0.65,0.84]
 
-fig, ax = plt.subplots()
-ax.plot(degs[11:1201], admittance[11:1201,0], 'k', linewidth=0.5)
-ax.grid()
-ax.set(xlim=(lmin, lmax), ylim=(0, 500),
-        ylabel="Admittance, mGal/km", xlabel="Spherical harmonic degree")
-ax2=ax.twinx()
-ax2.plot(degs[41:1200], corr[41:1200],color=ctud, linewidth=0.5)
-ax2.set_ylabel("Correlation [-]",color=ctud)
-ax2.set(ylim=(0.8, 1), yticks=[0.8, 0.85, 0.9, 0.95, 1.0])
+# fig, ax = plt.subplots()
+# ax.plot(degs[11:1201], admittance[11:1201,0], 'k', linewidth=0.5)
+# ax.grid()
+# ax.set(xlim=(lmin, lmax), ylim=(0, 500),
+#         ylabel="Admittance, mGal/km", xlabel="Spherical harmonic degree")
+# ax2=ax.twinx()
+# ax2.plot(degs[41:1200], corr[41:1200],color=ctud, linewidth=0.5)
+# ax2.set_ylabel("Correlation [-]",color=ctud)
+# ax2.set(ylim=(0.8, 1), yticks=[0.8, 0.85, 0.9, 0.95, 1.0])
 
 
 # fig, ax = plt.subplots()
