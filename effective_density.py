@@ -106,15 +106,26 @@ lmax = 650
 lwin = 58
 degrees = np.arange(lmax+lwin+1)
 
-R = clm.r0/1000 #todo: read from topography
+R = clm.r0/1000
 rho_b = 2963
 Tb = 0.3
 rho_0 = 2390
 a = 21
 
 N = 1000
-rN = 15
+rN = 20
 
+# latrange = [90, -90]
+# lonrange = [-180, 180] # Not 0-360 due to interpolation discontinuity on nearside
+# # fillres = args.res # grid to be filled by LS parameters #TODO
+# fillres = 10.
+# gridres = 1 # finer grid to be interpolated
+
+# latgrid = np.arange(latrange[0], latrange[1]-gridres, -gridres)
+# longrid = np.arange(lonrange[0], lonrange[1]+gridres, gridres)
+
+# longrid, latgrid = np.meshgrid(longrid, latgrid)
+# topo = hlm.expand(lat=latgrid, lon=longrid, lmax_calc=lmax+lwin, degrees=True)
 
 
 def rho_eff(degrees, R, N, rN, rho_0, a, rho_b, Tb ):
@@ -141,8 +152,8 @@ def rho_eff(degrees, R, N, rN, rho_0, a, rho_b, Tb ):
 
 # rho_eff_test = rho_eff(degrees, R, N, rN, rho_0, a, rho_b, Tb)
 
-ctud=[0,0.65,0.84]
 
+#%% Validation Gong et al. (2016)
 fig1, ax1 = plt.subplots()
 
 rho_eff_Tb0 = rho_eff(degrees, R, N, rN, rho_0, a, rho_b, 0)
