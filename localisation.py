@@ -126,8 +126,10 @@ for lat in latdummies:
     for lon in londummies:
         lingrad[lat, lon] = 160*np.random.rand()-80
         linsurf[lat, lon] = 800*np.random.rand()+2000
+        lincrust[lat, lon] = 800*np.random.rand()+2000
         dlingrad[lat, lon] = 5*np.random.rand()
         dlinsurf[lat, lon] = 20*np.random.rand()
+        dlincrust[lat, lon] = 20*np.random.rand()
         
 """ Construct latlon **indices** of fill grid w.r.t. fine grid """
 latfills = np.arange(-90, 90+1, fillres)
@@ -166,35 +168,41 @@ for l in range_with_status(len(latfills)):
         """ Calculate local effective density """
         local_eff_dens = mtxs_topograv / mts_bc
 
-        """ Read basalt thickness """
-        Tb = basalt_thickness[clat_index, clon_index]/1000
         
         """ Least squares fit of local spectrum """
-        if Tb == 0:
-            """ Linear model """
-            y = local_eff_dens[lmin:lmax+1]
-            k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1)) / R
-            x = 1/k
-
-            H = np.ones((len(x), 2));
-            for i in range(len(x)):
-                H[i,0] = x[i]
-      
-            xhat = np.matmul(np.matmul(np.linalg.inv(np.matmul(np.transpose(H),H)), np.transpose(H)),y)
-            yhat = np.matmul(H, xhat)
-            
-            Px = np.linalg.inv( 1/np.cov(y)*np.matmul(np.transpose(H), H) )
         
-            """ Add data to grid """
-            lingrad[clat_index, clon_index] = xhat[0]
-            linsurf[clat_index, clon_index] = xhat[1]
-            lincrust[clat_index, clon_index] = xhat[1]
-            dlingrad[clat_index, clon_index] = np.sqrt(Px[0,0])
-            dlinsurf[clat_index, clon_index] = np.sqrt(Px[1,1])
-            dlincrust[clat_index, clon_index] = 0
+        """ Linear model """
+        y = local_eff_dens[lmin:lmax+1]
+        k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1)) / R
+        x = 1/k
+
+        H = np.ones((len(x), 2));
+        for i in range(len(x)):
+            H[i,0] = x[i]
+  
+        xhat = np.matmul(np.matmul(np.linalg.inv(np.matmul(np.transpose(H),H)), np.transpose(H)),y)
+        yhat = np.matmul(H, xhat)
+        
+        Px = np.linalg.inv( 1/np.cov(y)*np.matmul(np.transpose(H), H) )
+        
+        """ Add data to grid """
+        lingrad[clat_index, clon_index] = xhat[0]
+        linsurf[clat_index, clon_index] = xhat[1]
+        lincrust[clat_index, clon_index] = xhat[1]
+        dlingrad[clat_index, clon_index] = np.sqrt(Px[0,0])
+        dlinsurf[clat_index, clon_index] = np.sqrt(Px[1,1])
+        dlincrust[clat_index, clon_index] = 0
      
-        else:
+        if xhat[0] < 0: # if density gradient is negative
             """ Two-layered Mare model """
+            
+            """ Read basalt thickness """
+            if clat_index - caprad < 0 or clat_index + caprad > basalt_thickness.shape[0] or clon_index - caprad < 0  or clon_index + caprad > basalt_thickness.shape[1]:
+                Tb = basalt_thickness[clat_index, clon_index] / 1000
+            else:                
+                Tb = np.average( basalt_thickness[clat_index-caprad:clat_index+caprad, 
+                                  clon_index-caprad:clon_index+caprad] ) / 1000
+            
             a = 21
             rho_0 = 2390
             
@@ -228,10 +236,10 @@ for l in range_with_status(len(latfills)):
             """ Add data to grid """
             lingrad[clat_index, clon_index] = a
             linsurf[clat_index, clon_index] = xhat[0]
-            lincrust[clat_index, clon_index] = xhat[1] + xhat[0]
+            lincrust[clat_index, clon_index] = rho_0
             dlingrad[clat_index, clon_index] = 0
             dlinsurf[clat_index, clon_index] = np.sqrt( Px[0,0] )
-            dlincrust[clat_index, clon_index] = np.sqrt( Px[0,0] + Px[1,1] )
+            dlincrust[clat_index, clon_index] = 0
     
 print("Finished: " + args.savename + "! Runtime: ", round((time.time() - start_time)/60,2), "minutes" )
 
