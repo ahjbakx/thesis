@@ -44,13 +44,32 @@ gridres = 1
 latgrid = np.arange(latrange[0], latrange[1]-gridres, -gridres)
 longrid = np.arange(lonrange[0], lonrange[1]+gridres, gridres)
 
+#%% Make maria mask
+
+contain_grid = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
+contain_grid[:] = False
+for lat in latgrid:
+    print(lat)
+    for lon in longrid:
+        p = Point(lon, lat)
+        for poly in polies:
+            if poly.contains(p):
+                lat_index = np.where(latgrid==lat)[0][0]
+                lon_index = np.where(longrid==lon)[0][0]
+                contain_grid[lat_index, lon_index] = True
+
+np.save("/Users/aaron/thesis/Data/mare_basalts/maria-mask", contain_grid)
+
 
 #%% Fill
+datapoints = [[],[]]
+
 from scipy import interpolate
 
 basalt_thickness = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
 basalt_thickness[:] = np.nan
 
+""" Load data points """
 for px in range(len(Tb)):
 
     lat_index = np.where( latgrid==np.round(lats[px]) )[0][0]
@@ -59,11 +78,28 @@ for px in range(len(Tb)):
     local_thickness = np.float64(Tb[px]) 
     
     if local_thickness == 0.0:
-        print(local_thickness)
         continue
     else:
         basalt_thickness[lat_index, lon_index] = local_thickness
+        datapoints[0] = np.append(datapoints[0], lats[px] )
+        datapoints[1] = np.append(datapoints[1], lons[px] )
 
+
+""" Set values outside maria to zero """
+contain_grid = np.load("/Users/aaron/thesis/Data/mare_basalts/maria-mask.npy")
+contain_grid = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
+contain_grid[:] = False
+for lat in latgrid:
+    for lon in longrid:
+        
+        lat_index = np.where(latgrid==lat)[0][0]
+        lon_index = np.where(longrid==lon)[0][0]
+        
+        if not contain_grid[lat_index, lon_index]:
+            basalt_thickness[lat_index, lon_index]= 0
+
+    
+""" Interpolate data within maria """
 array = np.ma.masked_invalid( basalt_thickness )
 xx, yy = np.meshgrid(longrid, latgrid)
 #get only the valid values
@@ -73,26 +109,24 @@ newarr = array[~array.mask]
 basalt_thickness = interpolate.griddata((x1, y1), 
                                     newarr.ravel(),
                                     (xx, yy),
-                                    method='nearest')
+                                    method='linear')
 
+""" Set minimum basalt thickness value """
+min_value = 500
 for lat in latgrid:
-    print(lat)
     for lon in longrid:
-        contains=False
-        p = Point(lon, lat)
-        for poly in polies:
-            if poly.contains(p):
-                contains=True
-                continue
-        if not contains:
-            lat_index = np.where(latgrid==lat)[0][0]
-            lon_index = np.where(longrid==lon)[0][0]
-            basalt_thickness[lat_index, lon_index]= 0
-    
+        lat_index = np.where(latgrid==lat)[0][0]
+        lon_index = np.where(longrid==lon)[0][0]
+        if contain_grid[lat_index, lon_index]:
+            if basalt_thickness[lat_index, lon_index] < min_value:
+                basalt_thickness[lat_index, lon_index] = min_value
+      
+
+
 #np.save("/Users/aaron/thesis/Data/mare_basalts/basalt-thickness", basalt_thickness)
 
 #%% Plot map
-basalt_thickness = np.load('/Users/aaron/thesis/Data/mare_basalts/basalt-thickness.npy')
+# basalt_thickness = np.load('/Users/aaron/thesis/basalt-thickness.npy')
 
 pysh.utils.figstyle(rel_width=0.75)
 
@@ -123,6 +157,16 @@ fig2, ax2 = basalt_thickness_grid.plot(projection=ccrs.Orthographic(central_long
                         show = False)
 ax2.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
                     linewidth=0.1, edgecolor='black', facecolor='none')
+# ax2.add_geometries(geoms=points, crs=ccrs.PlateCarree(central_longitude=-180.),
+#                     linewidth=10, edgecolor='red', facecolor='red')
 
-fig2.savefig("/Users/aaron/thesis/Figures/WP4/basalt-thickness.png", format='png', dpi=300)
+# for p in range( datapoints[0].shape[0] ):
+#     lon = datapoints[1][p]
+#     lat = datapoints[0][p]
+#     ax2.plot(lon, lat,
+#          color='red', marker='.', mfc='none',
+#          transform=ccrs.PlateCarree(central_longitude=-180.),
+#          )
+    
+# fig2.savefig("/Users/aaron/thesis/Figures/WP4/basalt-thickness.png", format='png', dpi=300)
     
