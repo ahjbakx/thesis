@@ -16,11 +16,12 @@ from matplotlib import pyplot as plt
 # Width of image with respect to (journal) page
 pysh.utils.figstyle(rel_width=0.75)
 save_figures = True
-only_map=False
+only_map=True
+duo=True
 
 #%% Import and prepare data
 
-folder = "result_robust3_25-03-21_16-00-10"
+folder = "result_duo4_02-04-21_01-55-41"
 path = "/Users/aaron/thesis/Results/"
 dirpath = path + folder + "/"
 
@@ -44,7 +45,11 @@ def load_files(dirpath):
     linsurf = np.load(dirpath + "linsurf.npy")
     dlingrad = np.load(dirpath + "dlingrad.npy")
     dlinsurf = np.load(dirpath + "dlinsurf.npy")
-
+    
+    
+    if duo:
+        lincrust = np.load(dirpath + "lincrust.npy")
+        dlincrust = np.load(dirpath + "dlincrust.npy")
 
     with open(dirpath + "README.txt", "r") as f:
         lines = f.readlines()
@@ -56,16 +61,31 @@ def load_files(dirpath):
     
     lats = np.arange(latrange[0], latrange[1]-gridres, -gridres)
     lons = np.arange(lonrange[0], lonrange[1]+gridres, gridres)
-
-    lingrad_interpolated = my_interpolate(lingrad, lons, lats, 'cubic')
-    linsurf_interpolated = my_interpolate(linsurf, lons, lats, 'cubic')
-    dlingrad_interpolated = my_interpolate(dlingrad, lons, lats, 'cubic')
-    dlinsurf_interpolated = my_interpolate(dlinsurf, lons, lats, 'cubic')
     
-    return lats, lons, lingrad_interpolated, linsurf_interpolated, dlingrad_interpolated, dlinsurf_interpolated
+    if duo:
+        lingrad_interpolated = my_interpolate(lingrad, lons, lats, 'cubic')
+        linsurf_interpolated = my_interpolate(linsurf, lons, lats, 'cubic')
+        lincrust_interpolated = my_interpolate(lincrust, lons, lats, 'cubic')
+        dlingrad_interpolated = my_interpolate(dlingrad, lons, lats, 'cubic')
+        dlinsurf_interpolated = my_interpolate(dlinsurf, lons, lats, 'cubic')
+        dlincrust_interpolated = my_interpolate(dlincrust, lons, lats, 'cubic')
+        
+        return lats, lons, lingrad_interpolated, linsurf_interpolated, lincrust_interpolated, dlingrad_interpolated, dlinsurf_interpolated, dlincrust_interpolated
 
 
-lats, lons, lingrad_interpolated, linsurf_interpolated, dlingrad_interpolated, dlinsurf_interpolated = load_files(dirpath)
+    else:
+
+        lingrad_interpolated = my_interpolate(lingrad, lons, lats, 'cubic')
+        linsurf_interpolated = my_interpolate(linsurf, lons, lats, 'cubic')
+        dlingrad_interpolated = my_interpolate(dlingrad, lons, lats, 'cubic')
+        dlinsurf_interpolated = my_interpolate(dlinsurf, lons, lats, 'cubic')
+        
+        return lats, lons, lingrad_interpolated, linsurf_interpolated, dlingrad_interpolated, dlinsurf_interpolated
+
+if duo:
+    lats, lons, lingrad_interpolated, linsurf_interpolated, lincrust_interpolated, dlingrad_interpolated, dlinsurf_interpolated, dlincrust_interpolated = load_files(dirpath)
+else:
+    lats, lons, lingrad_interpolated, linsurf_interpolated, dlingrad_interpolated, dlinsurf_interpolated = load_files(dirpath)
 
 # Grain density and porosity
 longrid, latgrid = np.meshgrid(lons, lats)
@@ -445,14 +465,13 @@ fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
                                 cmap=scm.sequential.Bilbao_20.mpl_colormap,
                                 cmap_limits = [1799, 3000],
                                 colorbar='bottom',
-                                cb_tick_interval = 300,
-                                cb_minor_tick_interval = 150,
+                                # cb_tick_interval = 300,
+                                # cb_minor_tick_interval = 150,
                                 cb_label='Surface density, kg/m$^3$',
                                 cb_triangles='both',
                                 grid=True,
                                 show=False
                                 )
-
   
 # dlingrad_grid = pysh.SHGrid.from_array(dlingrad_interpolated)
 # fig3, ax3 = dlingrad_grid.plot(ccrs.Orthographic(central_longitude=180.),

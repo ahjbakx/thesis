@@ -27,6 +27,7 @@ parser.add_argument("--lwin", type=int, required=True)
 parser.add_argument("--caprad", type=float, required=True)
 parser.add_argument("--res", type=int, required=True)
 parser.add_argument("--savename", type=str, required=True)
+parser.add_argument("--mp", type=float, required=True)
 args = parser.parse_args()
 
 # status generator
@@ -87,6 +88,7 @@ basalt_thickness = np.load(path + 'basalt-thickness.npy')
 """ Define spherical cap radius and concentration threshold """
 caprad = args.caprad
 concentration_threshold = 0.99
+multiplier = args.mp
 
 """ Additional comments to README file """
 comments = "linear + mare models"
@@ -168,43 +170,44 @@ for l in range_with_status(len(latfills)):
         """ Calculate local effective density """
         local_eff_dens = mtxs_topograv / mts_bc
 
+        """ Read basalt thickness """
+        if clat_index - np.int(caprad) < 0 or clat_index + np.int(caprad) > basalt_thickness.shape[0] or clon_index - np.int(caprad) < 0  or clon_index + np.int(caprad) > basalt_thickness.shape[1]:
+            Tb = basalt_thickness[clat_index, clon_index] / 1000
+        else:                
+            Tb = np.average( basalt_thickness[clat_index-np.int(caprad):clat_index+np.int(caprad), 
+                              clon_index-np.int(caprad):clon_index+np.int(caprad)] ) / 1000
+        
+        Tb = multiplier * Tb
         
         """ Least squares fit of local spectrum """
-        
-        """ Linear model """
-        y = local_eff_dens[lmin:lmax+1]
-        k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1)) / R
-        x = 1/k
-
-        H = np.ones((len(x), 2));
-        for i in range(len(x)):
-            H[i,0] = x[i]
-  
-        xhat = np.matmul(np.matmul(np.linalg.inv(np.matmul(np.transpose(H),H)), np.transpose(H)),y)
-        yhat = np.matmul(H, xhat)
-        
-        Px = np.linalg.inv( 1/np.cov(y)*np.matmul(np.transpose(H), H) )
-        
-        """ Add data to grid """
-        lingrad[clat_index, clon_index] = xhat[0]
-        linsurf[clat_index, clon_index] = xhat[1]
-        lincrust[clat_index, clon_index] = xhat[1]
-        dlingrad[clat_index, clon_index] = np.sqrt(Px[0,0])
-        dlinsurf[clat_index, clon_index] = np.sqrt(Px[1,1])
-        dlincrust[clat_index, clon_index] = 0
-     
-        if xhat[0] < 0: # if density gradient is negative
+        if Tb == 0:
+            """ Linear model """
+            y = local_eff_dens[lmin:lmax+1]
+            k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1)) / R
+            x = 1/k
+    
+            H = np.ones((len(x), 2));
+            for i in range(len(x)):
+                H[i,0] = x[i]
+      
+            xhat = np.matmul(np.matmul(np.linalg.inv(np.matmul(np.transpose(H),H)), np.transpose(H)),y)
+            yhat = np.matmul(H, xhat)
+            
+            Px = np.linalg.inv( 1/np.cov(y)*np.matmul(np.transpose(H), H) )
+            
+            """ Add data to grid """
+            lingrad[clat_index, clon_index] = xhat[0]
+            linsurf[clat_index, clon_index] = xhat[1]
+            lincrust[clat_index, clon_index] = xhat[1]
+            dlingrad[clat_index, clon_index] = np.sqrt(Px[0,0])
+            dlinsurf[clat_index, clon_index] = np.sqrt(Px[1,1])
+            dlincrust[clat_index, clon_index] = 0
+         
+        else:
             """ Two-layered Mare model """
-            
-            """ Read basalt thickness """
-            if clat_index - caprad < 0 or clat_index + caprad > basalt_thickness.shape[0] or clon_index - caprad < 0  or clon_index + caprad > basalt_thickness.shape[1]:
-                Tb = basalt_thickness[clat_index, clon_index] / 1000
-            else:                
-                Tb = np.average( basalt_thickness[clat_index-caprad:clat_index+caprad, 
-                                  clon_index-caprad:clon_index+caprad] ) / 1000
-            
-            a = 21
-            rho_0 = 2390
+
+            a = 40
+            rho_0 = 2400
             
             N = 1000 # amount of infinitesimal layers
             rN = 20 # depth of analysis

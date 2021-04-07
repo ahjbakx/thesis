@@ -84,11 +84,8 @@ for px in range(len(Tb)):
         datapoints[0] = np.append(datapoints[0], lats[px] )
         datapoints[1] = np.append(datapoints[1], lons[px] )
 
-
 """ Set values outside maria to zero """
 contain_grid = np.load("/Users/aaron/thesis/Data/mare_basalts/maria-mask.npy")
-contain_grid = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
-contain_grid[:] = False
 for lat in latgrid:
     for lon in longrid:
         
@@ -98,7 +95,6 @@ for lat in latgrid:
         if not contain_grid[lat_index, lon_index]:
             basalt_thickness[lat_index, lon_index]= 0
 
-    
 """ Interpolate data within maria """
 array = np.ma.masked_invalid( basalt_thickness )
 xx, yy = np.meshgrid(longrid, latgrid)
@@ -111,19 +107,19 @@ basalt_thickness = interpolate.griddata((x1, y1),
                                     (xx, yy),
                                     method='linear')
 
-""" Set minimum basalt thickness value """
-min_value = 500
-for lat in latgrid:
-    for lon in longrid:
-        lat_index = np.where(latgrid==lat)[0][0]
-        lon_index = np.where(longrid==lon)[0][0]
-        if contain_grid[lat_index, lon_index]:
-            if basalt_thickness[lat_index, lon_index] < min_value:
-                basalt_thickness[lat_index, lon_index] = min_value
+# """ Set minimum basalt thickness value """
+# min_value = 500
+# for lat in latgrid:
+#     for lon in longrid:
+#         lat_index = np.where(latgrid==lat)[0][0]
+#         lon_index = np.where(longrid==lon)[0][0]
+#         if contain_grid[lat_index, lon_index]:
+#             if basalt_thickness[lat_index, lon_index] < min_value:
+#                 basalt_thickness[lat_index, lon_index] = min_value
       
 
 
-#np.save("/Users/aaron/thesis/Data/mare_basalts/basalt-thickness", basalt_thickness)
+# np.save("/Users/aaron/thesis/Data/mare_basalts/basalt-thickness", basalt_thickness)
 
 #%% Plot map
 # basalt_thickness = np.load('/Users/aaron/thesis/basalt-thickness.npy')
@@ -132,23 +128,11 @@ pysh.utils.figstyle(rel_width=0.75)
 
 basalt_thickness_grid=pysh.SHGrid.from_array(basalt_thickness/1000)
 
-# fig1, ax1 = basalt_thickness_grid.plot(projection=ccrs.Mollweide(central_longitude=90.),
-#                         cmap = scm.sequential.Oslo_20.mpl_colormap,
-#                         colorbar='bottom',
-#                         cb_triangles='both',
-#                         cmap_limits = [0, 5000],
-#                         # cb_tick_interval = 150,
-#                         # cb_minor_tick_interval=50,
-#                         cb_label = 'Basalt thickness, m',
-#                         cmap_reverse=True,
-#                         grid = True,
-#                         show = False)
-
 fig2, ax2 = basalt_thickness_grid.plot(projection=ccrs.Orthographic(central_longitude=180.),
                         cmap = scm.sequential.Oslo_20.mpl_colormap,
                         colorbar='bottom',
                         cb_triangles='max',
-                        cmap_limits = [-.0001, 3],
+                        cmap_limits = [-.0001, 4],
                         cb_tick_interval = 1,
                         cb_minor_tick_interval=.5,
                         cb_label = 'Basalt thickness, km',
@@ -160,13 +144,14 @@ ax2.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
 # ax2.add_geometries(geoms=points, crs=ccrs.PlateCarree(central_longitude=-180.),
 #                     linewidth=10, edgecolor='red', facecolor='red')
 
-# for p in range( datapoints[0].shape[0] ):
-#     lon = datapoints[1][p]
-#     lat = datapoints[0][p]
-#     ax2.plot(lon, lat,
-#          color='red', marker='.', mfc='none',
-#          transform=ccrs.PlateCarree(central_longitude=-180.),
-#          )
+for p in range( datapoints[0].shape[0] ):
+    lon = datapoints[1][p]
+    lat = datapoints[0][p]
+    ax2.plot(lon, lat,
+          color='red', marker='.', mfc='none',
+          markersize=1,
+          transform=ccrs.PlateCarree(central_longitude=-180.),
+          )
     
 # fig2.savefig("/Users/aaron/thesis/Figures/WP4/basalt-thickness.png", format='png', dpi=300)
     
