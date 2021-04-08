@@ -180,7 +180,7 @@ for l in range_with_status(len(latfills)):
         Tb = multiplier * Tb
         
         """ Least squares fit of local spectrum """
-        if Tb == 0:
+        if Tb < 0.001:
             """ Linear model """
             y = local_eff_dens[lmin:lmax+1]
             k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1)) / R
@@ -229,7 +229,7 @@ for l in range_with_status(len(latfills)):
             y = local_eff_dens[lmin:lmax+1] - rhosum - rho_0 * ( r_0 / R ) ** ( degrees[lmin:lmax+1]+ 2 )
             
             x = (r_0 / R) ** ( degrees[lmin:lmax+1] + 2 )
-            H = np.ones((len(x), 1));
+            H = np.ones((len(x), 1))
             for i in range(len(x)):
                 H[i,0] = 1 - x[i]
       
