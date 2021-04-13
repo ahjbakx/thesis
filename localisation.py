@@ -19,6 +19,7 @@ import time
 import argparse
 from datetime import datetime
 from pyshtools import constants
+import pickle
 
 path = os.getcwd() + "/"
 
@@ -65,7 +66,7 @@ clm = pysh.SHGravCoeffs.from_file(path + 'sha.grgm1200b_rm1_1e1_sigma.txt',
 
 hlm = pysh.datasets.Moon.MoonTopo2600p(lmax=lmax+lwin)
 
-""" set angular rotation rate (for centripetal force) """
+""" Set angular rotation rate (for centripetal force) """
 clm.set_omega(constants.Moon.omega.value) 
 
 spectrum = clm.spectrum(function='total', lmax=lmax+lwin)
@@ -81,7 +82,7 @@ gobs = pysh.SHCoeffs.from_array(clm.coeffs)
 
 global_eff_dens = gobs.admittance(ghat)
 
-basalt_thickness = np.load(path + 'basalt-thickness.npy')
+basalt_thickness_total = pickle.load( open(path + 'basalt-thickness-v2.2.p', 'rb'))
 
 #%% Localised Spectral Analysis: Multitaper Spherical Cap Approach
 
@@ -90,8 +91,13 @@ caprad = args.caprad
 concentration_threshold = 0.99
 multiplier = args.mp
 
+""" Select appropriate basalt thickness map """
+keys = list( basalt_thickness_total.keys() )
+app_key = min(keys, key=lambda x:abs(x-caprad))
+basalt_thickness = basalt_thickness_total[app_key]
+
 """ Additional comments to README file """
-comments = "linear + mare models"
+comments = "linear + mare models, v2.2"
 
 start_time = time.time()
 
@@ -171,16 +177,10 @@ for l in range_with_status(len(latfills)):
         local_eff_dens = mtxs_topograv / mts_bc
 
         """ Read basalt thickness """
-        if clat_index - np.int(caprad) < 0 or clat_index + np.int(caprad) > basalt_thickness.shape[0] or clon_index - np.int(caprad) < 0  or clon_index + np.int(caprad) > basalt_thickness.shape[1]:
-            Tb = basalt_thickness[clat_index, clon_index] / 1000
-        else:                
-            Tb = np.average( basalt_thickness[clat_index-np.int(caprad):clat_index+np.int(caprad), 
-                              clon_index-np.int(caprad):clon_index+np.int(caprad)] ) / 1000
-        
-        Tb = multiplier * Tb
+        Tb = multiplier * basalt_thickness[clat_index, clon_index] / 1000
         
         """ Least squares fit of local spectrum """
-        if Tb < 0.001:
+        if Tb < 0.1:
             """ Linear model """
             y = local_eff_dens[lmin:lmax+1]
             k = np.sqrt(degrees[lmin:lmax+1]*(degrees[lmin:lmax+1]+1)) / R
@@ -206,7 +206,7 @@ for l in range_with_status(len(latfills)):
         else:
             """ Two-layered Mare model """
 
-            a = 40
+            a = 30
             rho_0 = 2400
             
             N = 1000 # amount of infinitesimal layers
