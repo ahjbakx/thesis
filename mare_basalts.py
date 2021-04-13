@@ -14,6 +14,7 @@ from palettable import scientific as scm
 import shapely
 import geopandas as gpd
 from shapely.geometry import Point
+import pickle
 
 sf = gpd.read_file("/Users/aaron/thesis/Data/mare_shape/LROC_GLOBAL_MARE_180.shp")
 # tolerance = 1.
@@ -30,83 +31,91 @@ for geo in geoms:
         # if geo.area>100:
         polies.append(geo)
 
-
-df = pd.read_excel(r'/Users/aaron/thesis/Data/mare_basalts/jgre20523-sup-0001-supinfo.xlsx')
-
-lats = df['lat'].to_numpy()[1:]
-lons = df['lon'].to_numpy()[1:]
-
-Tb = df['tb'].to_numpy()[1:]
-
 latrange = [90, -90]
 lonrange = [-180, 180] 
 gridres = 1
 latgrid = np.arange(latrange[0], latrange[1]-gridres, -gridres)
 longrid = np.arange(lonrange[0], lonrange[1]+gridres, gridres)
 
-#%% Make maria mask
+# contain_grid = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
+# contain_grid[:] = False
+# for lat in latgrid:
+#     print(lat)
+#     for lon in longrid:
+#         p = Point(lon, lat)
+#         for poly in polies:
+#             if poly.contains(p):
+#                 lat_index = np.where(latgrid==lat)[0][0]
+#                 lon_index = np.where(longrid==lon)[0][0]
+#                 contain_grid[lat_index, lon_index] = True
 
-contain_grid = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
-contain_grid[:] = False
-for lat in latgrid:
-    print(lat)
-    for lon in longrid:
-        p = Point(lon, lat)
-        for poly in polies:
-            if poly.contains(p):
-                lat_index = np.where(latgrid==lat)[0][0]
-                lon_index = np.where(longrid==lon)[0][0]
-                contain_grid[lat_index, lon_index] = True
+# np.save("/Users/aaron/thesis/Data/mare_basalts/maria-mask", contain_grid)
 
-np.save("/Users/aaron/thesis/Data/mare_basalts/maria-mask", contain_grid)
+basalt_thickness_total = dict()
+cap_radii = [8, 20, 14]
 
+for i in range(3):
+    df = pd.read_excel(r'/Users/aaron/thesis/Data/mare_basalts/jgre20523-sup-000' + str(i+1) + '-supinfo.xlsx')
 
-#%% Fill
-datapoints = [[],[]]
-
-from scipy import interpolate
-
-basalt_thickness = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
-basalt_thickness[:] = np.nan
-
-""" Load data points """
-for px in range(len(Tb)):
-
-    lat_index = np.where( latgrid==np.round(lats[px]) )[0][0]
-    lon_index = np.where( longrid==np.round(lons[px]) )[0][0]
+    lats = df['lat'].to_numpy()[1:]
+    lons = df['lon'].to_numpy()[1:]
+    Tb = df['tb'].to_numpy()[1:]
     
-    local_thickness = np.float64(Tb[px]) 
+    # remove NaNs
+    lats = np.array([lat for lat in lats if not np.isnan(lat) ])
+    lons = np.array([lon for lon in lons if not np.isnan(lon) ])
+    Tb = np.array([T for T in Tb if not np.isnan(T) ])
+
+
+
+
+    """ Fill """
+    datapoints = [[],[]]
     
-    if local_thickness == 0.0:
-        continue
-    else:
-        basalt_thickness[lat_index, lon_index] = local_thickness
-        datapoints[0] = np.append(datapoints[0], lats[px] )
-        datapoints[1] = np.append(datapoints[1], lons[px] )
-
-""" Set values outside maria to zero """
-contain_grid = np.load("/Users/aaron/thesis/Data/mare_basalts/maria-mask.npy")
-for lat in latgrid:
-    for lon in longrid:
+    from scipy import interpolate
+    
+    basalt_thickness = np.empty((np.int((np.sum(np.abs(latrange))/gridres+1)), np.int((np.sum(np.abs(lonrange))/gridres+1))))
+    basalt_thickness[:] = np.nan
+    
+    """ Load data points """
+    for px in range(len(Tb)):
+    
+        lat_index = np.where( latgrid==np.round(lats[px]) )[0][0]
+        lon_index = np.where( longrid==np.round(lons[px]) )[0][0]
         
-        lat_index = np.where(latgrid==lat)[0][0]
-        lon_index = np.where(longrid==lon)[0][0]
+        local_thickness = np.float64(Tb[px]) 
         
-        if not contain_grid[lat_index, lon_index]:
-            basalt_thickness[lat_index, lon_index]= 0
-
-""" Interpolate data within maria """
-array = np.ma.masked_invalid( basalt_thickness )
-xx, yy = np.meshgrid(longrid, latgrid)
-#get only the valid values
-x1 = xx[~array.mask]
-y1 = yy[~array.mask]
-newarr = array[~array.mask]
-basalt_thickness = interpolate.griddata((x1, y1), 
-                                    newarr.ravel(),
-                                    (xx, yy),
-                                    method='linear')
-
+        if local_thickness == 0.0:
+            continue
+        else:
+            basalt_thickness[lat_index, lon_index] = local_thickness
+            datapoints[0] = np.append(datapoints[0], lats[px] )
+            datapoints[1] = np.append(datapoints[1], lons[px] )
+    
+    """ Set values outside maria to zero """
+    contain_grid = np.load("/Users/aaron/thesis/Data/mare_basalts/maria-mask.npy")
+    for lat in latgrid:
+        for lon in longrid:
+            
+            lat_index = np.where(latgrid==lat)[0][0]
+            lon_index = np.where(longrid==lon)[0][0]
+            
+            if not contain_grid[lat_index, lon_index]:
+                basalt_thickness[lat_index, lon_index]= 0
+    
+    """ Interpolate data within maria """
+    array = np.ma.masked_invalid( basalt_thickness )
+    xx, yy = np.meshgrid(longrid, latgrid)
+    #get only the valid values
+    x1 = xx[~array.mask]
+    y1 = yy[~array.mask]
+    newarr = array[~array.mask]
+    basalt_thickness = interpolate.griddata((x1, y1), 
+                                        newarr.ravel(),
+                                        (xx, yy),
+                                        method='linear')
+    
+    basalt_thickness_total[cap_radii[i]] = basalt_thickness
 # """ Set minimum basalt thickness value """
 # min_value = 500
 # for lat in latgrid:
@@ -120,7 +129,7 @@ basalt_thickness = interpolate.griddata((x1, y1),
 
 
 # np.save("/Users/aaron/thesis/Data/mare_basalts/basalt-thickness", basalt_thickness)
-
+pickle.dump(basalt_thickness_total, open('/Users/aaron/thesis/Data/mare_basalts/basalt-thickness-v2.2.p', 'wb'))
 #%% Plot map
 # basalt_thickness = np.load('/Users/aaron/thesis/basalt-thickness.npy')
 
