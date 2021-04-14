@@ -7,13 +7,6 @@ Created on Wed Apr  7 09:36:46 2021
 """
 
 
-#%% Input
-
-plot_maps = True
-plot_scatters = False
-plot_correlation = True
-folder = "result_robust2_16-03-21_06-03-48"
-
 #%% Configuration
 
 import pyshtools as pysh
@@ -59,270 +52,268 @@ def my_interpolate(array, lons, lats, method):
                                         (xx, yy), method=method)
     return interpolated
 
+def import_data(folder):
+    """ Import data """
+    path = "/Users/aaron/thesis/Server/"
+    data_folder = "/Users/aaron/thesis/Data/"
+    
+    dirpath = path + folder + "/"
+    
+    config = get_data_config(dirpath)
+    
+    lats = np.arange(config['latrange'][0], config['latrange'][1]-config['gridres'], -config['gridres'])
+    lons = np.arange(config['lonrange'][0], config['lonrange'][1]+config['gridres'], config['gridres'])
+    
+    data_folder = "/Users/aaron/thesis/Data/"
+    albedo = make_empty_grid(config['latrange'], config['lonrange'], config['gridres'])
+    with open(data_folder + "albedo.txt", "r") as f:
+            lines = f.readlines()
+            l = 0
+            for line in lines:
+                albedo[l,:] = line.split(",")
+                l += 1
+                
+    grainsize = make_empty_grid(config['latrange'], config['lonrange'], config['gridres'])
+    with open(data_folder + "grain_size.txt", "r") as f:
+            lines = f.readlines()
+            l = 0
+            for line in lines:
+                grainsize[l,:] = line.split(",")
+                l += 1
+    
+    """ Calculate porosity """
+    porosity = calculate_porosity(dirpath, lons, lats)
+    
+    """ Set up latlon meshgrid """
+    longrid, latgrid = np.meshgrid(lons, lats)
+    
+    """ Split into maria and highlands """
+    albedo = split_maria_highlands(albedo, longrid, latgrid)
+    grainsize = split_maria_highlands(grainsize, longrid, latgrid)
+    porosity = split_maria_highlands(porosity, longrid, latgrid)
+    
+    """ Check if arrays have same length """
+    if not len(albedo['mr']) == len(grainsize['mr']) == len(porosity['mr']):
+        print("Maria arrays have unequal length")
+    elif not len(albedo['hl']) == len(grainsize['hl']) ==  len(porosity['hl']):
+        print("Highlands arrays have unequal length")
+    else:
+        print("All arrays have equal length")
+        
+    return albedo, grainsize, porosity, config
 
-#%% Import data
-print("Importing data...")
+def calculate_porosity(folder_path, lons, lats):
+    grain_density = np.load("/Users/aaron/thesis/Data/grain_density/grain_density.npy")
+    rho_surf = np.load(folder_path + "linsurf.npy")
+    rho_surf_interpolated = my_interpolate(rho_surf, lons, lats, 'cubic')
+    porosity = (1 - rho_surf_interpolated / grain_density ) * 100
+    return porosity
 
-path = "/Users/aaron/thesis/Results/"
-dirpath = path + folder + "/"
+def split_maria_highlands(data, longrid, latgrid):
+    #TODO: functionality to select individual maria
 
-with open(dirpath + "README.txt", "r") as f:
+    maria_mask = np.load("/Users/aaron/thesis/Data/mare_basalts/maria-mask.npy") 
+    mask_near = np.logical_and( abs(longrid)<70, abs(latgrid)<70 )
+    mr_mask = maria_mask.astype(bool)
+    hl_mask = np.logical_not(mr_mask)
+    
+    data_split = dict()
+    
+    data_split['tot'] = np.array([d for d in data[ mask_near ] if ( d != 0 and not np.isnan(d) ) ])
+    data_split['mr'] = np.array([d for d in data[ np.logical_and(mr_mask, mask_near) ] if ( d != 0 and not np.isnan(d) ) ])
+    data_split['hl'] = np.array([d for d in data[ np.logical_and(hl_mask, mask_near) ] if ( d != 0 and not np.isnan(d) ) ])
+
+    return data_split
+
+def get_data_config(folder_path):
+    config=dict()
+    with open(folder_path + "README.txt", "r") as f:
         lines = f.readlines()
-        latrange=[ int(lines[4].split(' ')[-2][1:3]), int(lines[4].split(' ')[-1][0:3]) ]
-        lonrange=[ int(lines[5].split(' ')[-2][1:5]), int(lines[5].split(' ')[-1][0:3]) ]
-        fillres=int(lines[6].split(' ')[-1])
-        gridres=int(lines[7].split(' ')[-1])
+        config['latrange']=[ int(lines[4].split(' ')[-2][1:3]), int(lines[4].split(' ')[-1][0:3]) ]
+        config['lonrange']=[ int(lines[5].split(' ')[-2][1:5]), int(lines[5].split(' ')[-1][0:3]) ]
+        config['fillres']=int(lines[6].split(' ')[-1])
+        config['gridres']=int(lines[7].split(' ')[-1])
+        config['caprad'] = lines[3].split(' ')[-1][0:-1]
+        
+    return config
 
-lats = np.arange(latrange[0], latrange[1]-gridres, -gridres)
-lons = np.arange(lonrange[0], lonrange[1]+gridres, gridres)
+def fixed_correlation_analysis(fixdata, otherdata, res, roi, xlabel):
 
-""" Import polarisation data """
-data_folder = "/Users/aaron/thesis/Data/"
+    """ Fixed grain size """
+    dcors = []
+    pcors = []
+    lengths = []
+    min_val = round( min(fixdata[roi]), 0 )
+    max_val = round( max(fixdata[roi]), 0 )
+    vals = np.arange(min_val, max_val, res)
+    for val in vals:
 
-albedo = make_empty_grid(latrange, lonrange, gridres)
-with open(data_folder + "albedo.txt", "r") as f:
-        lines = f.readlines()
-        l = 0
-        for line in lines:
-            albedo[l,:] = line.split(",")
-            l += 1
-            
-grain_size = make_empty_grid(latrange, lonrange, gridres)
-with open(data_folder + "grain_size.txt", "r") as f:
-        lines = f.readlines()
-        l = 0
-        for line in lines:
-            grain_size[l,:] = line.split(",")
-            l += 1
-            
-""" Import grain density and calculate porosity """
-path = "/Users/aaron/thesis/Results/"
-dirpath = path + folder + "/"
-rho_surf = np.load(dirpath + "linsurf.npy")
-rho_surf_interpolated = my_interpolate(rho_surf, lons, lats, 'cubic')
-grain_density = np.load("/Users/aaron/thesis/Data/grain_density/grain_density.npy")
-porosity = (1 - rho_surf_interpolated / grain_density ) * 100
-
-#%% Split data into maria and highlands
-print("Splitting...")
-
-""" Set up latlon meshgrid """
-longrid, latgrid = np.meshgrid(lons, lats)
-
-""" Construct data masks """
-mask_near = np.logical_and( abs(longrid)<70, abs(latgrid)<70 )
-maria_mask = np.load("/Users/aaron/thesis/Data/mare_basalts/maria-mask.npy") 
-mr_mask = maria_mask.astype(bool)
-hl_mask = np.logical_not(mr_mask)
-
-""" Split into maria and highlands """
-#TODO: functionality to select individual maria
-albedo_mr = np.array([a for a in albedo[ np.logical_and(mr_mask, mask_near) ] if ( a != 0 and not np.isnan(a) ) ])
-albedo_hl = np.array([a for a in albedo[ np.logical_and(hl_mask, mask_near) ] if ( a != 0 and not np.isnan(a) ) ])
-
-grain_size_mr = np.array([g for g in grain_size[ np.logical_and(mr_mask, mask_near) ] if ( g != 0 and not np.isnan(g) ) ])
-grain_size_hl = np.array([g for g in grain_size[ np.logical_and(hl_mask, mask_near) ] if ( g != 0 and not np.isnan(g) ) ])
-
-porosity_mr = np.array([p for p in porosity[ np.logical_and(mr_mask, mask_near) ] if ( p != 0 and not np.isnan(p) ) ])
-porosity_hl = np.array([p for p in porosity[ np.logical_and(hl_mask, mask_near) ] if ( p != 0 and not np.isnan(p) ) ])
-
-""" Check if arrays have same length """
-if not len(albedo_mr) == len(grain_size_mr) == len(porosity_mr):
-    print("Maria arrays have unequal length")
-elif not len(albedo_hl) == len(grain_size_hl) ==  len(porosity_hl):
-    print("Highlands arrays have unequal length")
-else:
-    print("All arrays have equal length")
-
-#%% Construct fixed parameter arrays for correlation calculation
-# plot_correlation= False
-""" Fixed grain size """
-g_cor = []
-g_lengths = []
-g_res = 2
-g_min = round( min(grain_size_hl), 0 )
-g_max = round( max(grain_size_hl), 0 )
-g_vals = np.arange(g_min, g_max, g_res)
-for g_val in g_vals:
-    # g_val = 75
-    fx_gs = [g for g in grain_size_hl if ( g > g_val-g_res/2 and g < g_val+g_res/2  ) ]
+        fx_vals = [i for i in fixdata[roi] if ( i > val-res/2 and i < val+res/2  ) ]
+        
+        sort_ind = np.argsort(fixdata[roi]) 
+        fx_vals_ind = np.searchsorted(fixdata[roi][sort_ind], fx_vals)
+        
+        fx_rest_1 = otherdata[0][roi][sort_ind][fx_vals_ind]
+        fx_rest_2 = otherdata[1][roi][sort_ind][fx_vals_ind]
+        
+        dcors.append( dcor.distance_correlation(fx_rest_1, fx_rest_2) )
+        pcors.append( np.corrcoef(fx_rest_1, fx_rest_2)[0,1] )
+        lengths.append( len(fx_vals) )
+        
+        # fig, ax = plt.subplots()
+        # im = ax.scatter(fx_gs_p, fx_gs_a, s=10, c=fx_gs, marker = 'o', 
+        #             cmap = scm.sequential.Imola_20.mpl_colormap)
+        # ax.set_xlabel("Porosity, %")
+        # ax.set_ylabel("Albedo, %")
+        # cbar = plt.colorbar(im)
+        # cbar.set_label("Median grain size, $\mu$m")
+        # ax.grid()
+        # ax.set(xlim=(0, 40), ylim=(0, 30))
+        # plt.show()
+        # print(g_cor)
+        # break
     
-    sort_ind = np.argsort(grain_size_hl)
-    g_sort = grain_size_hl[sort_ind]
-    fx_gs_ind = np.searchsorted(g_sort, fx_gs)
+    if np.nanmean(pcors) < 0:
+        c='red'
+    else:
+        c='green'
     
-    fx_gs_a = albedo_hl[sort_ind][fx_gs_ind]
-    fx_gs_p = porosity_hl[sort_ind][fx_gs_ind]
-    
-    g_cor.append( dcor.distance_correlation(fx_gs_a, fx_gs_p) )
-    g_lengths.append( len(fx_gs) )
-    
-    # fig, ax = plt.subplots()
-    # im = ax.scatter(fx_gs_p, fx_gs_a, s=10, c=fx_gs, marker = 'o', 
-    #             cmap = scm.sequential.Imola_20.mpl_colormap)
-    # ax.set_xlabel("Porosity, %")
-    # ax.set_ylabel("Albedo, %")
-    # cbar = plt.colorbar(im)
-    # cbar.set_label("Median grain size, $\mu$m")
-    # ax.grid()
-    # ax.set(xlim=(0, 40), ylim=(0, 30))
-    # plt.show()
-    # print(g_cor)
-    # break
-
-
-if plot_correlation:
     ctud=[0,0.65,0.84]
     fig, ax = plt.subplots()
-    ax.plot(g_vals, g_cor, color='black')
-    ax.set_xlabel("Median grain size, $\mu m$")
-    ax.set_ylabel("Distance correlation, -")
+    ax.plot(vals, dcors, color='black', label='SRB')
+    ax.plot(vals, np.abs(pcors), color=c, label='Pearson')
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("Correlation coefficient, -")
     ax.grid()
     
     ax2 = ax.twinx()
     ax2.set_ylabel('Number of datapoints, -', color=ctud)
-    ax2.plot(g_vals, g_lengths, color=ctud)
+    ax2.plot(vals, lengths, color=ctud)
     ax2.tick_params(axis='y', labelcolor=ctud)
     
     fig.tight_layout()
-    ax.set_title('Fixed median grain size')
+    ax.legend()
     plt.show()
+
+#%% Construct fixed parameter arrays for correlation calculation """
+
+folder = "result_robust2_16-03-21_06-03-48"
+albedo, grainsize, porosity, config = import_data(folder)
+
+""" Fixed grain size """
+fixed_correlation_analysis(fixdata=grainsize, 
+                           otherdata=[albedo, porosity], 
+                           res=2, roi='hl', xlabel="Median grain size, $\mu m$")
+
 
 """ Fixed porosity """
-p_cor = []
-p_lengths = []
-p_res = 0.35
-p_min = round( min(porosity_hl), 0 )
-p_max = round( max(porosity_hl), 0 )
-p_vals = np.arange(p_min, p_max, p_res)
-for p_val in p_vals:
-    # p_val = 21.5
-    fx_ps = [p for p in porosity_hl if ( p > p_val-p_res/2 and p < p_val+p_res/2  ) ]
-    
-    sort_ind = np.argsort(porosity_hl)
-    p_sort = porosity_hl[sort_ind]
-    fx_ps_ind = np.searchsorted(p_sort, fx_ps)
-    
-    fx_gs_a = albedo_hl[sort_ind][fx_ps_ind]
-    fx_gs_g = grain_size_hl[sort_ind][fx_ps_ind]
-    
-    p_cor.append( dcor.distance_correlation(fx_gs_a, fx_gs_g) )
-    p_lengths.append( len(fx_ps) )
-    
-    # fig, ax = plt.subplots()
-    # im = ax.scatter(fx_gs_g, fx_gs_a, s=10, c=fx_ps, marker = 'o', 
-    #             cmap = scm.sequential.Imola_20.mpl_colormap)
-    # ax.set_xlabel("Median grain size, $\mu$m")
-    # ax.set_ylabel("Albedo, %")
-    # cbar = plt.colorbar(im)
-    # cbar.set_label("Porosity, %")
-    # ax.grid()
-    # ax.set(xlim=(40, 160), ylim=(0, 30))
-    # plt.show()
+fixed_correlation_analysis(fixdata=porosity, 
+                           otherdata=[albedo, grainsize], 
+                           res=0.35, roi='hl', xlabel="Porosity, %")
 
-    # print(p_cor)
-    # break
+#%% 3D scatter
+
+fig, ax = plt.subplots()
+ax.set_xlabel("Porosity, -")
+ax.set_ylabel("Median grain size, $\mu$m")
+ax.set_title('Highlands')
+im = ax.scatter(porosity['hl'], grainsize['hl'], s=2, c=albedo['hl'], marker = 'o', 
+           cmap = scm.sequential.Imola_20.mpl_colormap,
+           vmin=10, vmax=30)
+cbar = plt.colorbar(im)
+cbar.set_label("Albedo, %")
+ax.grid()
+plt.show()
+
+fig, ax = plt.subplots()
+ax.set_xlabel("Porosity, %")
+ax.set_ylabel("Median grain size, $\mu$m")
+ax.set_title('Maria')
+im = ax.scatter(porosity['mr'], grainsize['mr'], s=2, c=albedo['mr'], marker = 'o', 
+           cmap = scm.sequential.Imola_20.mpl_colormap,
+           vmin=7, vmax=18)
+cbar = plt.colorbar(im)
+cbar.set_label("Albedo, %")
+ax.grid()
+plt.show()
 
 
-if plot_correlation:
-    ctud=[0,0.65,0.84]
-    fig, ax = plt.subplots()
-    ax.plot(p_vals, p_cor, color='black')
-    ax.set_xlabel("Porosity, %")
-    ax.set_ylabel("Distance correlation, -")
-    ax.grid()
-    
-    ax2 = ax.twinx()
-    ax2.set_ylabel('Number of datapoints, -', color=ctud)
-    ax2.plot(p_vals, p_lengths, color=ctud)
-    ax2.tick_params(axis='y', labelcolor=ctud)
-    
-    fig.tight_layout()
-    ax.set_title('Fixed porosity')
-    plt.show()
-#%% 3D Histogram
-
-if plot_scatters:
-    
-    fig, ax = plt.subplots()
-    ax.set_xlabel("Porosity, -")
-    ax.set_ylabel("Median grain size, $\mu$m")
-    ax.set_title('Highlands')
-    im = ax.scatter(porosity_hl, grain_size_hl, s=1, c=albedo_hl, marker = 'o', 
-               cmap = scm.sequential.Imola_20.mpl_colormap,
-               vmin=10, vmax=30)
-    cbar = plt.colorbar(im)
-    cbar.set_label("Albedo, %")
-    ax.grid()
-    plt.show()
-    
-    fig, ax = plt.subplots()
-    ax.set_xlabel("Porosity, %")
-    ax.set_ylabel("Median grain size, $\mu$m")
-    ax.set_title('Maria')
-    im = ax.scatter(porosity_mr, grain_size_mr, s=1, c=albedo_mr, marker = 'o', 
-               cmap = scm.sequential.Imola_20.mpl_colormap,
-               vmin=7, vmax=18)
-    cbar = plt.colorbar(im)
-    cbar.set_label("Albedo, %")
-    ax.grid()
-    plt.show()
 
 #%% Maps
-if plot_maps:
-    pysh.utils.figstyle(rel_width=0.75)
+
+pysh.utils.figstyle(rel_width=0.75)
+
+albedo_grid = pysh.SHGrid.from_array(albedo['tot'])
+fig1, ax1 = albedo_grid.plot(ccrs.Orthographic(central_longitude=180.),
+                                cmap=scm.sequential.GrayC_20.mpl_colormap,
+                                cmap_limits = [6, 36],
+                                colorbar='bottom',
+                                cb_label='Albedo, %',
+                                # cb_tick_interval = 40,
+                                # cb_minor_tick_interval = 20,
+                                # cb_triangles='both',
+                                cmap_reverse=True,
+                                grid=True,
+                                show=False
+                                )
     
-    albedo_grid = pysh.SHGrid.from_array(albedo)
-    fig1, ax1 = albedo_grid.plot(ccrs.Orthographic(central_longitude=180.),
-                                    cmap=scm.sequential.GrayC_20.mpl_colormap,
-                                    cmap_limits = [6, 36],
-                                    colorbar='bottom',
-                                    cb_label='Albedo, %',
-                                    # cb_tick_interval = 40,
-                                    # cb_minor_tick_interval = 20,
-                                    # cb_triangles='both',
-                                    cmap_reverse=True,
-                                    grid=True,
-                                    show=False
-                                    )
-        
-    grain_size_grid = pysh.SHGrid.from_array(grain_size)
-    fig2, ax2 = grain_size_grid.plot(ccrs.Orthographic(central_longitude=180.),
-                                    cmap=scm.sequential.Nuuk_20.mpl_colormap,
-                                    cmap_limits = [50, 120],
-                                    colorbar='bottom',
-                                    cb_label='Median grain size, $\mu$m',
-                                    # cb_tick_interval = 40,
-                                    # cb_minor_tick_interval = 20,
-                                    # cb_triangles='both',
-                                    grid=True,
-                                    show=False
-                                    )
+grain_size_grid = pysh.SHGrid.from_array(grainsize['tot'])
+fig2, ax2 = grain_size_grid.plot(ccrs.Orthographic(central_longitude=180.),
+                                cmap=scm.sequential.Nuuk_20.mpl_colormap,
+                                cmap_limits = [50, 120],
+                                colorbar='bottom',
+                                cb_label='Median grain size, $\mu$m',
+                                # cb_tick_interval = 40,
+                                # cb_minor_tick_interval = 20,
+                                # cb_triangles='both',
+                                grid=True,
+                                show=False
+                                )
+
+porosity_grid = pysh.SHGrid.from_array(porosity['tot'])
+fig4, ax4 = porosity_grid.plot(ccrs.Orthographic(central_longitude=180.),
+                                cmap=scm.sequential.Acton_20.mpl_colormap,
+                                cmap_limits = [-0.001, 30],
+                                colorbar='bottom',
+                                cb_label='Porosity, %',
+                                cb_tick_interval = 10,
+                                cb_minor_tick_interval = 5,
+                                cb_triangles='both',
+                                grid=True,
+                                cmap_reverse=True,
+                                show=False
+                                )
+
+ 
+#%% Correlation Study Multiple Models       
+
+
+folders = ["result_robust2_16-03-21_06-03-48",
+           "result_val-1-G19_10-03-21_02-36-51",
+           "result_val-2-G19_10-03-21_13-49-06",
+           "result_robust1_17-03-21_12-21-43"]
+
+fig, ax = plt.subplots()
+ax.set_xlabel("Porosity, -")
+ax.set_ylabel("Median grain size, $\mu$m")
+roi = 'tot'
+N=10000
+for folder in folders:
     
-    grain_density_grid = pysh.SHGrid.from_array(grain_density)
-    fig3, ax3 = grain_density_grid.plot(projection=ccrs.Orthographic(central_longitude=180.),
-                            cmap = scm.sequential.Bilbao_20.mpl_colormap,
-                            colorbar='bottom',
-                            cb_triangles='both',
-                            cmap_limits = [2799, 3600],
-                            cb_tick_interval = 200,
-                            cb_minor_tick_interval=50,
-                            cb_label = 'Grain density, kg/m$^3$',
-                            grid = True,
-                            show = False)
+    albedo, grainsize, porosity, config = import_data(folder)
     
-    porosity_grid = pysh.SHGrid.from_array(porosity)
-    fig4, ax4 = porosity_grid.plot(ccrs.Orthographic(central_longitude=180.),
-                                    cmap=scm.sequential.Acton_20.mpl_colormap,
-                                    cmap_limits = [-0.001, 30],
-                                    colorbar='bottom',
-                                    cb_label='Porosity, %',
-                                    cb_tick_interval = 10,
-                                    cb_minor_tick_interval = 5,
-                                    cb_triangles='both',
-                                    grid=True,
-                                    cmap_reverse=True,
-                                    show=False
-                                    )
+    sample = np.random.randint(0, len(albedo[roi]), N)
     
-        
+    ax.scatter(porosity[roi][sample], grainsize[roi][sample], s=5, marker = 'o',
+               vmin=10, vmax=30, label=config['caprad'])
+    
+ax.grid()
+ax.legend(markerscale=10.)
+plt.show()
+    
+
+
+
+
+
+
