@@ -98,9 +98,7 @@ def import_data(folder):
     elif not len(albedo['hl']) == len(grainsize['hl']) ==  len(porosity['hl']):
         print("Highlands arrays have unequal length")
     else:
-        print("All arrays have equal length")
-        
-    return albedo, grainsize, porosity, config
+        return albedo, grainsize, porosity, config
 
 def calculate_porosity(folder_path, lons, lats):
     grain_density = np.load("/Users/aaron/thesis/Data/grain_density/grain_density.npy")
@@ -137,7 +135,7 @@ def get_data_config(folder_path):
         
     return config
 
-def fixed_correlation_analysis(fixdata, otherdata, res, roi, xlabel):
+def fixed_correlation_analysis(fixdata, otherdata, res, roi, xlabel='', plot=False):
 
     """ Fixed grain size """
     dcors = []
@@ -173,28 +171,34 @@ def fixed_correlation_analysis(fixdata, otherdata, res, roi, xlabel):
         # print(g_cor)
         # break
     
-    if np.nanmean(pcors) < 0:
-        c='red'
-    else:
-        c='green'
+    if plot:
+        if np.nanmean(pcors) < 0:
+            c='red'
+        else:
+            c='green'
+        
+        ctud=[0,0.65,0.84]
+        fig, ax = plt.subplots()
+        ax.plot(vals, dcors, color='black', label='SRB')
+        ax.plot(vals, np.abs(pcors), color=c, label='Pearson')
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel("Correlation coefficient, -")
+        ax.grid()
+        
+        ax2 = ax.twinx()
+        ax2.set_ylabel('Number of datapoints, -', color=ctud)
+        ax2.plot(vals, lengths, color=ctud)
+        ax2.tick_params(axis='y', labelcolor=ctud)
+        
+        fig.tight_layout()
+        ax.legend()
+        plt.show()
+        
+    coeffs = dict()
+    coeffs['SRB'] = np.array(dcors)
+    coeffs['Pearson'] = np.array(pcors)
     
-    ctud=[0,0.65,0.84]
-    fig, ax = plt.subplots()
-    ax.plot(vals, dcors, color='black', label='SRB')
-    ax.plot(vals, np.abs(pcors), color=c, label='Pearson')
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel("Correlation coefficient, -")
-    ax.grid()
-    
-    ax2 = ax.twinx()
-    ax2.set_ylabel('Number of datapoints, -', color=ctud)
-    ax2.plot(vals, lengths, color=ctud)
-    ax2.tick_params(axis='y', labelcolor=ctud)
-    
-    fig.tight_layout()
-    ax.legend()
-    plt.show()
-
+    return coeffs, np.array(lengths)
 #%% Construct fixed parameter arrays for correlation calculation """
 
 folder = "result_robust2_16-03-21_06-03-48"
@@ -203,13 +207,15 @@ albedo, grainsize, porosity, config = import_data(folder)
 """ Fixed grain size """
 fixed_correlation_analysis(fixdata=grainsize, 
                            otherdata=[albedo, porosity], 
-                           res=2, roi='hl', xlabel="Median grain size, $\mu m$")
+                           res=2, roi='hl', xlabel="Median grain size, $\mu m$",
+                           plot=True)
 
 
 """ Fixed porosity """
 fixed_correlation_analysis(fixdata=porosity, 
                            otherdata=[albedo, grainsize], 
-                           res=0.35, roi='hl', xlabel="Porosity, %")
+                           res=0.35, roi='hl', xlabel="Porosity, %",
+                           plot=True)
 
 #%% 3D scatter
 
@@ -293,24 +299,76 @@ folders = ["result_robust2_16-03-21_06-03-48",
            "result_val-2-G19_10-03-21_13-49-06",
            "result_robust1_17-03-21_12-21-43"]
 
-fig, ax = plt.subplots()
-ax.set_xlabel("Porosity, -")
-ax.set_ylabel("Median grain size, $\mu$m")
-roi = 'tot'
-N=10000
+threshold = 400
+roi = 'hl'
+correlations = dict()
+coefficients = ['SRB', 'Pearson']
+statistics = ['min', 'max', 'mean']
+
+
+for coefficient in coefficients:
+    correlations[coefficient] = dict()
+    for statistic in statistics:
+        correlations[coefficient][statistic] = []
+correlations['caprad'] = []
+
 for folder in folders:
     
     albedo, grainsize, porosity, config = import_data(folder)
     
-    sample = np.random.randint(0, len(albedo[roi]), N)
+    coeffs, lengths = fixed_correlation_analysis(fixdata=grainsize, 
+                           otherdata=[albedo, porosity], 
+                           res=2, roi=roi)
     
-    ax.scatter(porosity[roi][sample], grainsize[roi][sample], s=5, marker = 'o',
-               vmin=10, vmax=30, label=config['caprad'])
+    correlations['caprad'].append( float(config['caprad']) )
     
-ax.grid()
-ax.legend(markerscale=10.)
+    for coefficient in coefficients:
+        valid = coeffs[coefficient][lengths>threshold]
+        for statistic in statistics:
+            if statistic == 'min':
+                correlations[coefficient][statistic].append( np.min(valid) )
+            elif statistic == 'max':
+                correlations[coefficient][statistic].append( np.max(valid) )
+            elif statistic == 'mean':
+                correlations[coefficient][statistic].append( np.mean(valid) )
+            else:
+                print('Unknown statistic: ', statistic)
+              
+for coefficient in coefficients:
+    for statistic in statistics:
+        correlations[coefficient][statistic] = np.array(correlations[coefficient][statistic])
+                
+        
+plt.figure()
+for coeff in coefficients:
+    if coeff == 'SRB':
+        c = 'black'
+        e = np.array([np.abs(correlations[coeff]['min']-correlations[coeff]['mean']), 
+                      np.abs(correlations[coeff]['max']-correlations[coeff]['mean'])])
+    elif coeff == 'Pearson':
+        if np.mean( correlations[coeff]['mean'] ) < 0:
+            c = 'red'
+            e = np.array([np.abs(correlations[coeff]['max']-correlations[coeff]['mean']), 
+                          np.abs(correlations[coeff]['min']-correlations[coeff]['mean'])])
+        else:
+            c = 'green'
+            e = np.array([np.abs(correlations[coeff]['min']-correlations[coeff]['mean']), 
+                          np.abs(correlations[coeff]['max']-correlations[coeff]['mean'])])
+   
+            
+    eb = plt.errorbar(correlations['caprad'], np.abs(correlations[coeff]['mean']), 
+                 yerr=e, fmt='o', capsize=10, capthick=2, elinewidth=2,
+                 color=c, label=coeff)
+
+plt.xlabel('Cap radius, $^\circ$')
+plt.ylabel('Correlation coefficient, -')
+plt.legend()
+plt.grid()
+plt.title('Fixed grain size  (' + roi + ')')
 plt.show()
-    
+
+
+
 
 
 
