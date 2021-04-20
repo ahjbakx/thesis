@@ -17,12 +17,12 @@ from matplotlib import pyplot as plt
 pysh.utils.figstyle(rel_width=0.75)
 save_figures = True
 only_map=True
-duo=True
+duo=False
 
 #%% Import and prepare data
 
-folder = "result_duo4_02-04-21_01-55-41"
-path = "/Users/aaron/thesis/Results/"
+folder = "result_robust4_15-04-21_09-42-50"
+path = "/Users/aaron/thesis/Server/"
 dirpath = path + folder + "/"
 
 def my_interpolate(array, lons, lats, method):
@@ -499,19 +499,19 @@ fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
 #                                 show=False
 #                                 )
 
-# porosity_grid = pysh.SHGrid.from_array(porosity)
-# fig5, ax5 = porosity_grid.plot(ccrs.Orthographic(central_longitude=180.),
-#                                 cmap=scm.sequential.Acton_20.mpl_colormap,
-#                                 cmap_limits = [-0.001, 0.301],
-#                                 colorbar='bottom',
-#                                 cb_label='Porosity, -',
-#                                 cb_tick_interval = 0.1,
-#                                 cb_minor_tick_interval = 0.05,
-#                                 cb_triangles='both',
-#                                 grid=True,
-#                                 cmap_reverse=True,
-#                                 show=False
-#                                 )
+porosity_grid = pysh.SHGrid.from_array(porosity*100)
+fig5, ax5 = porosity_grid.plot(ccrs.Orthographic(central_longitude=180.),
+                                cmap=scm.sequential.Acton_20.mpl_colormap,
+                                cmap_limits = [-0.001, 30],
+                                colorbar='bottom',
+                                cb_label='Porosity, %',
+                                cb_tick_interval = 10,
+                                cb_minor_tick_interval = 5,
+                                cb_triangles='both',
+                                grid=True,
+                                cmap_reverse=True,
+                                show=False
+                                )
 
 # grain_density_grid = pysh.SHGrid.from_array(grain)
 # fig6, ax6 = grain_density_grid.plot(ccrs.Mollweide(central_longitude=0.),
@@ -538,18 +538,18 @@ fig2, ax2 = linsurf_grid.plot(ccrs.Orthographic(central_longitude=180.),
 # ax4.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
 #                    linewidth=0.2, edgecolor='white', facecolor='none')
 
-# ax5.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
-#                    linewidth=0.2, edgecolor='white', facecolor='none')
+ax5.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
+                    linewidth=0.2, edgecolor='white', facecolor='none')
 
 # ax6.add_geometries(geoms=polies, crs=ccrs.PlateCarree(central_longitude=-180.),
-                    # linewidth=0.2, edgecolor='white', facecolor='none')
+#                     linewidth=0.2, edgecolor='white', facecolor='none')
 
 if save_figures:
     fig1.savefig(dirpath + "lindensgrad.png", format='png', dpi=300)
     fig2.savefig(dirpath + "linsurfdens.png", format='png', dpi=300)
     # fig3.savefig(dirpath + "uncertainty_lindensgrad.png", format='png', dpi=300)
     # fig4.savefig(dirpath + "uncertainty_linsurfdens.png", format='png', dpi=300)
-    # fig5.savefig(dirpath + "porosity.png", format='png', dpi=300)
+    fig5.savefig(dirpath + "porosity.png", format='png', dpi=300)
     # fig6.savefig(dirpath + "grain_density.png", format='png', dpi=300)
     
 #%% Plot 
