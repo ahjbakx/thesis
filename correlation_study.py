@@ -218,11 +218,19 @@ fixed_correlation_analysis(fixdata=porosity,
                            plot=True)
 
 #%% 3D scatter
+"""
+result_robust2_16-03-21_06-03-48
+result_val-1-G19_10-03-21_02-36-51
+result_val-2-G19_10-03-21_13-49-06
+result_robust1_17-03-21_12-21-43
+"""
+folder = "result_robust2_16-03-21_06-03-48"
+albedo, grainsize, porosity, config = import_data(folder)
 
 fig, ax = plt.subplots()
-ax.set_xlabel("Porosity, -")
+ax.set_xlabel("Porosity, %")
 ax.set_ylabel("Median grain size, $\mu$m")
-ax.set_title('Highlands')
+ax.set_title('Highlands, cap radius = ' + config['caprad'] + '$^\circ$')
 im = ax.scatter(porosity['hl'], grainsize['hl'], s=2, c=albedo['hl'], marker = 'o', 
            cmap = scm.sequential.Imola_20.mpl_colormap,
            vmin=10, vmax=30)
@@ -231,17 +239,17 @@ cbar.set_label("Albedo, %")
 ax.grid()
 plt.show()
 
-fig, ax = plt.subplots()
-ax.set_xlabel("Porosity, %")
-ax.set_ylabel("Median grain size, $\mu$m")
-ax.set_title('Maria')
-im = ax.scatter(porosity['mr'], grainsize['mr'], s=2, c=albedo['mr'], marker = 'o', 
-           cmap = scm.sequential.Imola_20.mpl_colormap,
-           vmin=7, vmax=18)
-cbar = plt.colorbar(im)
-cbar.set_label("Albedo, %")
-ax.grid()
-plt.show()
+# fig, ax = plt.subplots()
+# ax.set_xlabel("Porosity, %")
+# ax.set_ylabel("Median grain size, $\mu$m")
+# ax.set_title('Maria')
+# im = ax.scatter(porosity['mr'], grainsize['mr'], s=2, c=albedo['mr'], marker = 'o', 
+#            cmap = scm.sequential.Imola_20.mpl_colormap,
+#            vmin=7, vmax=18)
+# cbar = plt.colorbar(im)
+# cbar.set_label("Albedo, %")
+# ax.grid()
+# plt.show()
 
 
 
@@ -303,7 +311,7 @@ threshold = 400
 roi = 'hl'
 correlations = dict()
 coefficients = ['SRB', 'Pearson']
-statistics = ['min', 'max', 'mean']
+statistics = ['Q1', 'Q3', 'median']
 
 
 for coefficient in coefficients:
@@ -331,6 +339,12 @@ for folder in folders:
                 correlations[coefficient][statistic].append( np.max(valid) )
             elif statistic == 'mean':
                 correlations[coefficient][statistic].append( np.mean(valid) )
+            elif statistic == 'Q1':
+                correlations[coefficient][statistic].append( np.percentile(valid, 25) )
+            elif statistic == 'median':
+                correlations[coefficient][statistic].append( np.percentile(valid, 50) )
+            elif statistic == 'Q3':
+                correlations[coefficient][statistic].append( np.percentile(valid, 75) )
             else:
                 print('Unknown statistic: ', statistic)
               
@@ -343,20 +357,20 @@ plt.figure()
 for coeff in coefficients:
     if coeff == 'SRB':
         c = 'black'
-        e = np.array([np.abs(correlations[coeff]['min']-correlations[coeff]['mean']), 
-                      np.abs(correlations[coeff]['max']-correlations[coeff]['mean'])])
+        e = np.array([np.abs(correlations[coeff]['Q1']-correlations[coeff]['median']), 
+                      np.abs(correlations[coeff]['Q3']-correlations[coeff]['median'])])
     elif coeff == 'Pearson':
-        if np.mean( correlations[coeff]['mean'] ) < 0:
+        if np.mean( correlations[coeff]['median'] ) < 0:
             c = 'red'
-            e = np.array([np.abs(correlations[coeff]['max']-correlations[coeff]['mean']), 
-                          np.abs(correlations[coeff]['min']-correlations[coeff]['mean'])])
+            e = np.array([np.abs(correlations[coeff]['Q3']-correlations[coeff]['median']), 
+                          np.abs(correlations[coeff]['Q1']-correlations[coeff]['median'])])
         else:
             c = 'green'
-            e = np.array([np.abs(correlations[coeff]['min']-correlations[coeff]['mean']), 
-                          np.abs(correlations[coeff]['max']-correlations[coeff]['mean'])])
+            e = np.array([np.abs(correlations[coeff]['Q1']-correlations[coeff]['median']), 
+                          np.abs(correlations[coeff]['Q3']-correlations[coeff]['median'])])
    
             
-    eb = plt.errorbar(correlations['caprad'], np.abs(correlations[coeff]['mean']), 
+    eb = plt.errorbar(correlations['caprad'], np.abs(correlations[coeff]['median']), 
                  yerr=e, fmt='o', capsize=10, capthick=2, elinewidth=2,
                  color=c, label=coeff)
 
