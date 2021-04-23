@@ -88,9 +88,9 @@ def import_data(folder):
     longrid, latgrid = np.meshgrid(lons, lats)
     
     """ Split into maria and highlands """
-    albedo = split_maria_highlands(albedo, longrid, latgrid)
-    grainsize = split_maria_highlands(grainsize, longrid, latgrid)
-    porosity = split_maria_highlands(porosity, longrid, latgrid)
+    albedo = split(albedo, longrid, latgrid)
+    grainsize = split(grainsize, longrid, latgrid)
+    porosity = split(porosity, longrid, latgrid)
     
     """ Check if arrays have same length """
     if not len(albedo['mr']) == len(grainsize['mr']) == len(porosity['mr']):
@@ -107,7 +107,7 @@ def calculate_porosity(folder_path, lons, lats):
     porosity = (1 - rho_surf_interpolated / grain_density ) * 100
     return porosity
 
-def split_maria_highlands(data, longrid, latgrid):
+def split(data, longrid, latgrid):
     #TODO: functionality to select individual maria
 
     maria_mask = np.load("/Users/aaron/thesis/Data/mare_basalts/maria-mask.npy") 
@@ -115,11 +115,39 @@ def split_maria_highlands(data, longrid, latgrid):
     mr_mask = maria_mask.astype(bool)
     hl_mask = np.logical_not(mr_mask)
     
+    mask_0 = abs(latgrid)<15
+    mask_15 = np.logical_and( abs(latgrid)>15, abs(latgrid)<30 )
+    mask_30 = np.logical_and( abs(latgrid)>30, abs(latgrid)<50 )
+    mask_50 = abs(latgrid)>50
+    
+    mask_0 = np.logical_and(mask_0, mask_near)
+    mask_15 = np.logical_and(mask_15, mask_near)
+    mask_30 = np.logical_and(mask_30, mask_near)
+    mask_50 = np.logical_and(mask_50, mask_near)
+    
+    def mask_data(data, mask):
+        return np.array([d for d in data[ mask ] if ( d != 0 and not np.isnan(d) ) ])
+    
     data_split = dict()
     
-    data_split['tot'] = np.array([d for d in data[ mask_near ] if ( d != 0 and not np.isnan(d) ) ])
-    data_split['mr'] = np.array([d for d in data[ np.logical_and(mr_mask, mask_near) ] if ( d != 0 and not np.isnan(d) ) ])
-    data_split['hl'] = np.array([d for d in data[ np.logical_and(hl_mask, mask_near) ] if ( d != 0 and not np.isnan(d) ) ])
+    data_split['tot'] = mask_data(data, mask_near)
+    data_split['mr'] = mask_data(data, np.logical_and(mr_mask, mask_near))
+    data_split['hl'] = mask_data(data, np.logical_and(hl_mask, mask_near))
+    
+    data_split['tot_0lat15'] = mask_data(data, mask_0)
+    data_split['tot_15lat30'] = mask_data(data, mask_15)
+    data_split['tot_30lat50'] = mask_data(data, mask_30)
+    data_split['tot_50lat70'] = mask_data(data, mask_50)
+    
+    data_split['mr_0lat15'] = mask_data(data, np.logical_and(mr_mask, mask_0))
+    data_split['mr_15lat30'] = mask_data(data, np.logical_and(mr_mask, mask_15))
+    data_split['mr_30lat50'] = mask_data(data, np.logical_and(mr_mask, mask_30))
+    data_split['mr_50lat70'] = mask_data(data, np.logical_and(mr_mask, mask_50))
+    
+    data_split['hl_0lat15'] = mask_data(data, np.logical_and(hl_mask, mask_0))
+    data_split['hl_15lat30'] = mask_data(data, np.logical_and(hl_mask, mask_15))
+    data_split['hl_30lat50'] = mask_data(data, np.logical_and(hl_mask, mask_30))
+    data_split['hl_50lat70'] = mask_data(data, np.logical_and(hl_mask, mask_50))
 
     return data_split
 
@@ -346,7 +374,7 @@ for folder in folders:
             elif statistic == 'Q3':
                 correlations[coefficient][statistic].append( np.percentile(valid, 75) )
             else:
-                print('Unknown statistic: ', statistic)
+                print('Undefined statistic: ', statistic)
               
 for coefficient in coefficients:
     for statistic in statistics:
@@ -376,16 +404,92 @@ for coeff in coefficients:
 
 plt.xlabel('Cap radius, $^\circ$')
 plt.ylabel('Correlation coefficient, -')
+plt.ylim(-0.1, 0.7)
 plt.legend()
 plt.grid()
 plt.title('Fixed grain size  (' + roi + ')')
 plt.show()
 
+#%% Latitudinal dependency
+
+folders = ["result_robust2_16-03-21_06-03-48",
+           "result_val-1-G19_10-03-21_02-36-51",
+           "result_val-2-G19_10-03-21_13-49-06",
+           "result_robust1_17-03-21_12-21-43"]
+
+latitudes = dict()
+caprads = []
+# Read cap radii of above models
+for folder in folders:
+    
+    albedo, grainsize, porosity, config = import_data(folder)
+    latitudes[config['caprad']] = dict()
+    caprads.append(config['caprad'])
+
+threshold = 200
+statistics = ['Q1', 'Q3', 'median']
+roi = 'hl'
+lats = [roi + '_0lat15', roi + '_15lat30', roi + '_30lat50', roi + '_50lat70']
+
+for caprad in caprads:
+    for statistic in statistics:
+        latitudes[caprad][statistic] = []
+latitudes['lats'] = [7.5, 22.5, 40, 60]
+
+for folder in folders:
+    
+    albedo, grainsize, porosity, config = import_data(folder)
+    
+    caprad = config['caprad']
+    
+    for lat in lats:
+        coeffs, lengths = fixed_correlation_analysis(fixdata=porosity, 
+                               otherdata=[albedo, grainsize], 
+                               res=2, roi=lat)
+        
+        valid = coeffs['SRB'][lengths>threshold]
+        for statistic in statistics:
+            if statistic == 'min':
+                latitudes[caprad][statistic].append( np.min(valid) )
+            elif statistic == 'max':
+                latitudes[caprad][statistic].append( np.max(valid) )
+            elif statistic == 'mean':
+                latitudes[caprad][statistic].append( np.mean(valid) )
+            elif statistic == 'Q1':
+                latitudes[caprad][statistic].append( np.percentile(valid, 25) )
+            elif statistic == 'median':
+                latitudes[caprad][statistic].append( np.percentile(valid, 50) )
+            elif statistic == 'Q3':
+                latitudes[caprad][statistic].append( np.percentile(valid, 75) )
+            else:
+                print('Undefined statistic: ', statistic)
+              
+for caprad in caprads:
+    for statistic in statistics:
+        latitudes[caprad][statistic] = np.array(latitudes[caprad][statistic])
+                
 
 
+        
+plt.figure()
+plt.xticks([0.11, 0.32, 0.57,0.86 ], 
+           [r'$|\beta|$<15$^\circ$', r'15$^\circ$<$|\beta$|<30$^\circ$', r'30$^\circ$<$|\beta|$<50$^\circ$', r'$|\beta|$>50$^\circ$'], 
+           rotation=20)
+for caprad in caprads:
+    e = np.array([np.abs(latitudes[caprad]['Q1']-latitudes[caprad]['median']), 
+                  np.abs(latitudes[caprad]['Q3']-latitudes[caprad]['median'])])
+            
+    eb = plt.errorbar([0.11, 0.32, 0.57,0.86], latitudes[caprad]['median'],
+                      yerr=e, fmt='o', capsize=10, capthick=2, elinewidth=2, label=r'$\theta_{cap}$=' + caprad + '$^\circ$')
 
-
-
+plt.xlabel('Selenographic latitude')
+plt.ylabel('Correlation coefficient, -')
+# plt.ylim(-0.1, 0.7)
+plt.legend( bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.grid()
+plt.ylim(0.0, 0.6)
+plt.title('Fixed porosity (' + roi + ')')
+plt.show()
 
 
 
