@@ -80,6 +80,11 @@ def import_data(folder):
             for line in lines:
                 grainsize[l,:] = line.split(",")
                 l += 1
+                
+    albedo[albedo==0] = np.nan
+    grainsize[grainsize==0] = np.nan
+    albedo = my_interpolate(albedo, lons, lats, 'cubic')
+    grainsize = my_interpolate(grainsize, lons, lats, 'cubic')
     
     """ Calculate porosity """
     porosity = calculate_porosity(dirpath, lons, lats)
@@ -88,9 +93,9 @@ def import_data(folder):
     longrid, latgrid = np.meshgrid(lons, lats)
     
     """ Split into maria and highlands """
-    albedo = split(albedo, longrid, latgrid)
-    grainsize = split(grainsize, longrid, latgrid)
-    porosity = split(porosity, longrid, latgrid)
+    albedo = split(albedo, longrid, latgrid, porosity)
+    grainsize = split(grainsize, longrid, latgrid, porosity)
+    porosity = split(porosity, longrid, latgrid, porosity)
     
     """ Check if arrays have same length """
     if not len(albedo['mr']) == len(grainsize['mr']) == len(porosity['mr']):
@@ -107,11 +112,13 @@ def calculate_porosity(folder_path, lons, lats):
     porosity = (1 - rho_surf_interpolated / grain_density ) * 100
     return porosity
 
-def split(data, longrid, latgrid):
+def split(data, longrid, latgrid, porosity):
     #TODO: functionality to select individual maria
 
+    por_mask = np.logical_and(porosity>0, porosity<100)
     maria_mask = np.load("/Users/aaron/thesis/Data/mare_basalts/maria-mask.npy") 
     mask_near = np.logical_and( abs(longrid)<70, abs(latgrid)<70 )
+    mask_near = np.logical_and( mask_near, por_mask)
     mr_mask = maria_mask.astype(bool)
     hl_mask = np.logical_not(mr_mask)
     
@@ -165,7 +172,6 @@ def get_data_config(folder_path):
 
 def fixed_correlation_analysis(fixdata, otherdata, res, roi, xlabel='', plot=False):
 
-    """ Fixed grain size """
     dcors = []
     pcors = []
     lengths = []
@@ -252,14 +258,16 @@ result_val-1-G19_10-03-21_02-36-51
 result_val-2-G19_10-03-21_13-49-06
 result_robust1_17-03-21_12-21-43
 """
-folder = "result_robust2_16-03-21_06-03-48"
+folder = "result_duo20_15-04-21_14-45-44"
 albedo, grainsize, porosity, config = import_data(folder)
+
+roi = 'mr'
 
 fig, ax = plt.subplots()
 ax.set_xlabel("Porosity, %")
 ax.set_ylabel("Median grain size, $\mu$m")
-ax.set_title('Highlands, cap radius = ' + config['caprad'] + '$^\circ$')
-im = ax.scatter(porosity['hl'], grainsize['hl'], s=2, c=albedo['hl'], marker = 'o', 
+ax.set_title('Cap radius = ' + config['caprad'] + '$^\circ$ (' + roi + ')')
+im = ax.scatter(porosity[roi], grainsize[roi], s=2, c=albedo[roi], marker = 'o', 
            cmap = scm.sequential.Imola_20.mpl_colormap,
            vmin=10, vmax=30)
 cbar = plt.colorbar(im)
@@ -329,14 +337,31 @@ fig4, ax4 = porosity_grid.plot(ccrs.Orthographic(central_longitude=180.),
  
 #%% Correlation Study Multiple Models       
 
+# calculate correlation between albedo and ...
+between = 'porosity'
 
-folders = ["result_robust2_16-03-21_06-03-48",
-           "result_val-1-G19_10-03-21_02-36-51",
-           "result_val-2-G19_10-03-21_13-49-06",
-           "result_robust1_17-03-21_12-21-43"]
+# in region of interest ... 
+roi = 'tot'
+
+# with model ...
+duo = True
+
+if duo:
+    folders = ["result_duo18_15-04-21_01-34-38",
+            "result_duo19_15-04-21_02-10-54",
+            "result_duo20_15-04-21_14-45-44"]
+    model = 'duo'
+else:
+    folders = ["result_robust2_16-03-21_06-03-48",
+                "result_val-1-G19_10-03-21_02-36-51",
+                "result_val-2-G19_10-03-21_13-49-06",
+                "result_robust1_17-03-21_12-21-43"]
+    model = 'lin'
+
+
 
 threshold = 400
-roi = 'hl'
+
 correlations = dict()
 coefficients = ['SRB', 'Pearson']
 statistics = ['Q1', 'Q3', 'median']
@@ -348,13 +373,25 @@ for coefficient in coefficients:
         correlations[coefficient][statistic] = []
 correlations['caprad'] = []
 
+
 for folder in folders:
     
     albedo, grainsize, porosity, config = import_data(folder)
     
-    coeffs, lengths = fixed_correlation_analysis(fixdata=grainsize, 
-                           otherdata=[albedo, porosity], 
-                           res=2, roi=roi)
+    if between == 'porosity':
+        fixdata = grainsize
+        other = porosity
+        res = 2
+    elif between == 'grain size':
+        fixdata = porosity
+        other = grainsize
+        res = 2
+    else:
+        print('Unknown fixdata ' + between )
+        
+    coeffs, lengths = fixed_correlation_analysis(fixdata=fixdata, 
+                           otherdata=[albedo, other], 
+                           res=res, roi=roi)
     
     correlations['caprad'].append( float(config['caprad']) )
     
@@ -402,12 +439,13 @@ for coeff in coefficients:
                  yerr=e, fmt='o', capsize=10, capthick=2, elinewidth=2,
                  color=c, label=coeff)
 
+
 plt.xlabel('Cap radius, $^\circ$')
 plt.ylabel('Correlation coefficient, -')
-plt.ylim(-0.1, 0.7)
-plt.legend()
+plt.ylim(0.0, 0.8)
+plt.legend(loc='lower right')
 plt.grid()
-plt.title('Fixed grain size  (' + roi + ')')
+plt.title('Between albedo and ' + between + '  (' + roi + ', ' + model + ')')
 plt.show()
 
 #%% Latitudinal dependency
@@ -491,5 +529,153 @@ plt.ylim(0.0, 0.6)
 plt.title('Fixed porosity (' + roi + ')')
 plt.show()
 
+#%% Correlation total overview
 
 
+folders = dict()
+
+folders['duo'] = ["result_duo18_15-04-21_01-34-38",
+        "result_duo19_15-04-21_02-10-54",
+        "result_duo20_15-04-21_14-45-44",
+        "result_duo21_22-04-21_03-05-16"]
+
+folders['lin'] = ["result_robust2_16-03-21_06-03-48",
+        "result_val-1-G19_10-03-21_02-36-51",
+        "result_val-2-G19_10-03-21_13-49-06",
+        "result_robust1_17-03-21_12-21-43"]
+
+
+models = ['duo', 'lin']
+rois = ['tot', 'mr', 'hl']
+betweens = ['porosity', 'grain size']
+
+threshold = 200
+res = 2
+
+correlations = dict()
+statistics = ['Q1', 'Q3', 'median']
+
+for model in models:
+    correlations[model] = dict()
+    for roi in rois:
+        correlations[model][roi] = dict()
+        for between in betweens:
+            correlations[model][roi][between] = dict()
+            for statistic in statistics:
+                correlations[model][roi][between][statistic] = []
+    correlations[model]['caprad'] = []
+
+for model in models:
+    for folder in folders[model]:
+        
+        albedo, grainsize, porosity, config = import_data(folder)
+        
+        correlations[model]['caprad'].append( float(config['caprad']) )
+        
+        for roi in rois:
+            for between in betweens:
+                
+                if between == 'porosity':
+                    fixdata = grainsize
+                    other = porosity
+                    
+                elif between == 'grain size':
+                    fixdata = porosity
+                    other = grainsize
+                else:
+                    print('Unknown parameter: ' + between )
+                    
+                
+            
+                coeffs, lengths = fixed_correlation_analysis(fixdata=fixdata, 
+                                       otherdata=[albedo, other], 
+                                       res=res, roi=roi)
+        
+                valid = coeffs['SRB'][lengths>threshold]
+                for statistic in statistics:
+                    if statistic == 'min':
+                        correlations[model][roi][between][statistic].append( np.min(valid) )
+                    elif statistic == 'max':
+                        correlations[model][roi][between][statistic].append( np.max(valid) )
+                    elif statistic == 'mean':
+                        correlations[model][roi][between][statistic].append( np.mean(valid) )
+                    elif statistic == 'Q1':
+                        correlations[model][roi][between][statistic].append( np.percentile(valid, 25) )
+                    elif statistic == 'median':
+                        correlations[model][roi][between][statistic].append( np.percentile(valid, 50) )
+                    elif statistic == 'Q3':
+                        correlations[model][roi][between][statistic].append( np.percentile(valid, 75) )
+                    else:
+                        print('Undefined statistic: ', statistic)
+for model in models:
+    for roi in rois:
+        for between in betweens:
+            for statistic in statistics:
+                correlations[model][roi][between][statistic] = np.array(correlations[model][roi][between][statistic])
+                    
+
+#%% 
+model = 'duo'
+for between in betweens:
+    plt.figure()
+    
+    for roi in rois:
+        
+        if roi == 'tot':
+            c = 'black'
+            label = 'total'
+        elif roi == 'mr':
+            c = (0.8500, 0.3250, 0.0980)
+            label = 'maria'
+        elif roi == 'hl':
+            c = (0, 0.4470, 0.7410)
+            label = 'highlands'
+        else:
+            print('Undefined region of interest: ', roi)
+
+        e = np.array([np.abs(correlations[model][roi][between]['Q1']-correlations[model][roi][between]['median']), 
+                              np.abs(correlations[model][roi][between]['Q3']-correlations[model][roi][between]['median'])])
+                
+        eb = plt.errorbar(correlations[model]['caprad'], np.abs(correlations[model][roi][between]['median']), 
+                     yerr=e, fmt='-o', capsize=10, capthick=2, elinewidth=2,
+                     color=c, label=label)
+    
+    
+    plt.xlabel('Cap radius, $^\circ$')
+    plt.ylabel('Correlation coefficient, -')
+    plt.ylim(0.0, 0.8)
+    plt.legend(loc='upper right', ncol=3)
+    plt.title('Between albedo and ' + between)
+    plt.grid()
+    plt.show()
+
+
+plt.figure()
+
+for roi in rois:
+    
+    if roi == 'tot':
+        c = 'black'
+        label = 'total'
+    elif roi == 'mr':
+        c = (0.8500, 0.3250, 0.0980)
+        label = 'maria'
+    elif roi == 'hl':
+        c = (0, 0.4470, 0.7410)
+        label = 'highlands'
+    else:
+        print('Undefined region of interest: ', roi)
+    
+    
+    mediandif = ( correlations['duo'][roi]['porosity']['median'] + correlations['duo'][roi]['grain size']['median'])/2 - \
+        ( correlations['lin'][roi]['porosity']['median'] + correlations['lin'][roi]['grain size']['median'])/2
+      
+    plt.plot(correlations[model]['caprad'], np.abs(mediandif), color=c, marker='o',
+                  markersize=10, label=label)
+
+plt.xlabel('Cap radius, $^\circ$')
+plt.ylabel('Difference in correlation, -')
+plt.ylim(-0.02, 0.15)
+plt.legend(loc='upper right', ncol=3)
+plt.grid()
+plt.show()
