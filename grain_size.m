@@ -413,24 +413,27 @@ lons = linspace(-180, 180, 361);
 
 albedo = zeros(size(lonmesh));
 Pmax = zeros(size(lonmesh));
-grain_size = zeros(size(lonmesh));
+grainsize = zeros(size(lonmesh));
 
-for ilat = 21:numlats-20
-    for ilon = 111:numlons-110
-        lat = latmesh(ilat, ilon)
+res = 5;
+
+for ilat = 21:res:numlats-20
+    lat = latmesh(ilat, ilon)
+    
+    for ilon = 111:res:numlons-110
         lon = lonmesh(ilat, ilon);
 
         [g, dg, A, P, dA, dP] = get_grain_size_at_lat_lon(grain_size_self, a, da, lat, lon, albedo_630, pmax_630);
         
         albedo(ilat, ilon) = A;
         Pmax(ilat, ilon) = P;
-        grain_size(ilat, ilon) = g;
+        grainsize(ilat, ilon) = g;
     end
 end
 
 % writematrix(albedo, "albedo.txt");
 % writematrix(Pmax, "Pmax.txt");
-% writematrix(grain_size, "grain_size.txt");
+% writematrix(grainsize, "grain_size.txt");
 
 
 
