@@ -450,10 +450,10 @@ plt.show()
 
 #%% Latitudinal dependency
 
-folders = ["result_robust2_16-03-21_06-03-48",
-           "result_val-1-G19_10-03-21_02-36-51",
-           "result_val-2-G19_10-03-21_13-49-06",
-           "result_robust1_17-03-21_12-21-43"]
+folders = ["result_duo18_15-04-21_01-34-38",
+        "result_duo19_15-04-21_02-10-54",
+        "result_duo20_15-04-21_14-45-44",
+        "result_duo21_22-04-21_03-05-16"]
 
 latitudes = dict()
 caprads = []
@@ -464,7 +464,7 @@ for folder in folders:
     latitudes[config['caprad']] = dict()
     caprads.append(config['caprad'])
 
-threshold = 200
+threshold = 50
 statistics = ['Q1', 'Q3', 'median']
 roi = 'hl'
 lats = [roi + '_0lat15', roi + '_15lat30', roi + '_30lat50', roi + '_50lat70']
@@ -507,8 +507,6 @@ for caprad in caprads:
         latitudes[caprad][statistic] = np.array(latitudes[caprad][statistic])
                 
 
-
-        
 plt.figure()
 plt.xticks([0.11, 0.32, 0.57,0.86 ], 
            [r'$|\beta|$<15$^\circ$', r'15$^\circ$<$|\beta$|<30$^\circ$', r'30$^\circ$<$|\beta|$<50$^\circ$', r'$|\beta|$>50$^\circ$'], 
@@ -518,7 +516,7 @@ for caprad in caprads:
                   np.abs(latitudes[caprad]['Q3']-latitudes[caprad]['median'])])
             
     eb = plt.errorbar([0.11, 0.32, 0.57,0.86], latitudes[caprad]['median'],
-                      yerr=e, fmt='o', capsize=10, capthick=2, elinewidth=2, label=r'$\theta_{cap}$=' + caprad + '$^\circ$')
+                      yerr=e, fmt='-o', capsize=10, capthick=2, elinewidth=2, label=r'$\theta_{cap}$=' + caprad + '$^\circ$')
 
 plt.xlabel('Selenographic latitude')
 plt.ylabel('Correlation coefficient, -')
@@ -526,7 +524,7 @@ plt.ylabel('Correlation coefficient, -')
 plt.legend( bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.grid()
 plt.ylim(0.0, 0.6)
-plt.title('Fixed porosity (' + roi + ')')
+plt.title('Between albedo and grain size (' + roi + ')')
 plt.show()
 
 #%% Correlation total overview
@@ -546,10 +544,17 @@ folders['lin'] = ["result_robust2_16-03-21_06-03-48",
 
 
 models = ['duo', 'lin']
-rois = ['tot', 'mr', 'hl']
+regions = ['tot', 'mr', 'hl']
+lats = ['_0lat15', '_15lat30', '_30lat50', '_50lat70']
+rois = []
+for roi in regions:
+    rois.append(roi)
+    for lat in lats:
+        rois.append(roi + lat)
+
 betweens = ['porosity', 'grain size']
 
-threshold = 200
+threshold = 50
 res = 2
 
 correlations = dict()
@@ -591,7 +596,7 @@ for model in models:
                                        otherdata=[albedo, other], 
                                        res=res, roi=roi)
         
-                valid = coeffs['SRB'][lengths>threshold]
+                valid = coeffs['Pearson'][lengths>threshold]
                 for statistic in statistics:
                     if statistic == 'min':
                         correlations[model][roi][between][statistic].append( np.min(valid) )
@@ -619,11 +624,12 @@ model = 'duo'
 for between in betweens:
     plt.figure()
     
-    for roi in rois:
+    for roi in regions:
         
         if roi == 'tot':
             c = 'black'
             label = 'total'
+            continue
         elif roi == 'mr':
             c = (0.8500, 0.3250, 0.0980)
             label = 'maria'
@@ -632,6 +638,7 @@ for between in betweens:
             label = 'highlands'
         else:
             print('Undefined region of interest: ', roi)
+            continue
 
         e = np.array([np.abs(correlations[model][roi][between]['Q1']-correlations[model][roi][between]['median']), 
                               np.abs(correlations[model][roi][between]['Q3']-correlations[model][roi][between]['median'])])
@@ -643,8 +650,8 @@ for between in betweens:
     
     plt.xlabel('Cap radius, $^\circ$')
     plt.ylabel('Correlation coefficient, -')
-    plt.ylim(0.0, 0.8)
-    plt.legend(loc='upper right', ncol=3)
+    plt.ylim(0.0, 0.6)
+    plt.legend(loc='lower right', ncol=3)
     plt.title('Between albedo and ' + between)
     plt.grid()
     plt.show()
@@ -652,11 +659,12 @@ for between in betweens:
 
 plt.figure()
 
-for roi in rois:
+for roi in regions:
     
     if roi == 'tot':
         c = 'black'
         label = 'total'
+        continue
     elif roi == 'mr':
         c = (0.8500, 0.3250, 0.0980)
         label = 'maria'
@@ -665,6 +673,7 @@ for roi in rois:
         label = 'highlands'
     else:
         print('Undefined region of interest: ', roi)
+        continue
     
     
     mediandif = ( correlations['duo'][roi]['porosity']['median'] + correlations['duo'][roi]['grain size']['median'])/2 - \
@@ -675,7 +684,64 @@ for roi in rois:
 
 plt.xlabel('Cap radius, $^\circ$')
 plt.ylabel('Difference in correlation, -')
-plt.ylim(-0.02, 0.15)
+plt.ylim(0.0, 0.1)
 plt.legend(loc='upper right', ncol=3)
 plt.grid()
 plt.show()
+
+#%% Latitudinal Dependency
+
+
+model = 'duo'
+between = 'grain size'
+
+for region in regions:
+    correlations[model][region]['latitude'] = dict() 
+    
+    for statistic in statistics:
+        
+        correlations[model][region]['latitude'][statistic] = []
+        
+        for lat in lats:
+            
+            cur = ( np.mean(correlations[model][region+lat]['porosity'][statistic]) +
+                   np.mean(correlations[model][region+lat]['grain size'][statistic]) ) / 2
+            
+            
+            correlations[model][region]['latitude'][statistic].append( cur )
+
+plt.figure()
+plt.xticks([0.11, 0.32, 0.57,0.86 ], 
+           [r'$|\beta|$<15$^\circ$', r'15$^\circ$<$|\beta$|<30$^\circ$', r'30$^\circ$<$|\beta|$<50$^\circ$', r'$|\beta|$>50$^\circ$'], 
+           rotation=20)  
+
+for region in regions:
+    
+    if region == 'tot':
+        c = 'black'
+        label = 'total'
+        continue
+    elif region == 'mr':
+        c = (0.8500, 0.3250, 0.0980)
+        label = 'maria'
+    elif region == 'hl':
+        c = (0, 0.4470, 0.7410)
+        label = 'highlands'
+    else:
+        print('Undefined region of interest: ', roi)
+        continue
+    
+    plt.plot([0.11, 0.32, 0.57,0.86], np.abs( correlations[model][region]['latitude']['median'] ),
+                 '-o', color=c, markersize=10, label=label)
+
+plt.xlabel('Selenographic latitude')
+plt.ylabel('Correlation coefficient, -')
+# plt.ylim(-0.1, 0.7)
+plt.legend( loc='lower left', ncol=3)
+plt.grid()
+plt.ylim(0.0, 0.5)
+# plt.title('')
+plt.show()
+
+
+
